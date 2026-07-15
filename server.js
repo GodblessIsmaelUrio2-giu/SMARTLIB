@@ -252,7 +252,7 @@ app.post('/api/webauthn/register/options', async (req, res) => {
       authenticatorSelection: {
         authenticatorAttachment: 'platform', // use the phone's built-in sensor
         userVerification: 'required',
-        residentKey: 'preferred',
+        residentKey: 'discouraged',
       },
     });
 
