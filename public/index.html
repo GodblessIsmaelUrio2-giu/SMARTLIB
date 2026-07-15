@@ -135,7 +135,7 @@
 </style>
 
 <script type="module">
-import { startRegistration, startAuthentication } from 'https://esm.sh/@simplewebauthn/browser@10.0.0';
+import { startRegistration, startAuthentication } from 'https://esm.sh/@simplewebauthn/browser@^10';
 
 // Point this at your Render backend.
 const API_BASE = 'https://smartlib-f8ul.onrender.com';
@@ -202,7 +202,13 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
     const options = await optionsRes.json();
     if(!optionsRes.ok) throw new Error(options.error || 'Could not start registration');
 
-    const attestation = await startRegistration({ optionsJSON: options });
+    let attestation;
+try {
+  attestation = await startRegistration({ optionsJSON: options });
+} catch (weErr) {
+  console.error('WEBAUTHN ERROR:', weErr.name, weErr.message, weErr.stack);
+  throw weErr;
+}
 
     const verifyRes = await fetch(`${API_BASE}/api/webauthn/register/verify`, {
       method: 'POST',
