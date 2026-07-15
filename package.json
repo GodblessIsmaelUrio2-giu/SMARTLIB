@@ -1,0 +1,17 @@
+{
+  "name": "kiut-smartlib-pass",
+  "version": "1.0.0",
+  "description": "KIUT SmartLib Pass — check-in/check-out backend with Supabase",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "express": "^4.19.2"
+  }
+}

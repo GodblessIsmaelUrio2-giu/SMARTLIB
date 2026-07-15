@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIUT SmartLib Pass — Librarian dashboard</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar glass">
+    <div class="brand">
+      <div class="brand-mark">
+        <img src="assets/logo.png" alt="KIUT logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span class="fallback" style="display:none;">KIUT</span>
+      </div>
+      <div class="brand-text">
+        <h1>SmartLib Pass</h1>
+        <p>Librarian dashboard</p>
+      </div>
+    </div>
+    <nav class="nav-pills">
+      <a href="checkin.html"><i class="ti ti-door-enter"></i> Check-in terminal</a>
+      <a href="checkout.html"><i class="ti ti-door-exit"></i> Check-out terminal</a>
+      <a href="dashboard.html" class="active">Dashboard</a>
+    </nav>
+  </header>
+
+  <main class="dash-main">
+
+    <div class="stat-grid">
+      <div class="stat-card glass">
+        <div class="stat-label">Active inside</div>
+        <div class="stat-value" id="statActiveInside">—</div>
+        <div class="stat-delta">Live count</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-label">Check-ins today</div>
+        <div class="stat-value" id="statCheckinsToday">—</div>
+        <div class="stat-delta">Since midnight</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-label">Avg entry time</div>
+        <div class="stat-value">2.1s</div>
+        <div class="stat-delta">80% faster than logbook</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-label">Flagged entries</div>
+        <div class="stat-value" id="statFlagged">—</div>
+        <div class="stat-delta flat">Needs review</div>
+      </div>
+    </div>
+
+    <div class="panel glass">
+      <div class="panel-header">
+        <h2><span class="live-dot"></span>Live entry log</h2>
+        <div class="actions">
+          <div class="search-box">
+            <i class="ti ti-search"></i>
+            <input type="text" placeholder="Search by name or reg number" id="searchInput">
+          </div>
+          <button class="btn"><i class="ti ti-download"></i> Export CSV</button>
+          <button class="btn btn-primary"><i class="ti ti-refresh"></i> Refresh</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Reg number</th>
+            <th>Name</th>
+            <th>Time in</th>
+            <th>Time out</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="logBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel glass">
+      <div class="panel-header">
+        <h2>Latest verification</h2>
+      </div>
+      <div style="padding:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+        <div class="avatar" style="width:64px;height:64px;font-size:20px;">SL</div>
+        <div>
+          <p style="margin:0; font-weight:600; font-size:16px;">Shafiuna Ahmadi Libiga</p>
+          <p class="mono" style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">DCS/32115/2401/DT</p>
+          <p style="margin:6px 0 0; font-size:13px;"><span class="pill pill-inside"><i class="ti ti-check"></i> Verified at 08:42 AM</span></p>
+        </div>
+        <div style="margin-left:auto; font-size:13px; color:var(--ink-soft); text-align:right;">
+          Confirm the face on screen matches<br>the student entering the library.
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="foot">
+    <span>KIUT Library · Gongo la Mboto Campus</span>
+    <span>Dashboard · Updated just now</span>
+  </footer>
+
+</div>
+
+<script>
+const searchInput = document.getElementById('searchInput');
+const logBody = document.getElementById('logBody');
+const refreshBtn = document.querySelector('.panel-header .btn-primary');
+
+function pillFor(row){
+  if(row.status === 'inside') return '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Inside</span>';
+  if(row.status === 'flagged') return '<span class="pill pill-flag"><i class="ti ti-alert-triangle"></i> ' + (row.flag_reason || 'Flagged') + '</span>';
+  return '<span class="pill pill-out"><i class="ti ti-door-exit"></i> Checked out</span>';
+}
+
+function fmt(t){
+  if(!t) return '—';
+  return new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+async function loadLogs(){
+  try {
+    const res = await fetch('/api/logs');
+    const rows = await res.json();
+    if(!Array.isArray(rows) || rows.length === 0){
+      logBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No entries yet</td></tr>';
+      return;
+    }
+    logBody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="reg-cell">${r.reg_number}</td>
+        <td>${r.name}</td>
+        <td>${fmt(r.time_in)}</td>
+        <td>${fmt(r.time_out)}</td>
+        <td>${pillFor(r)}</td>
+      </tr>
+    `).join('');
+    attachSearch();
+  } catch (err) {
+    logBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);">Could not load logs</td></tr>';
+  }
+}
+
+async function loadStats(){
+  try {
+    const res = await fetch('/api/stats');
+    const stats = await res.json();
+    document.getElementById('statActiveInside').textContent = stats.active_inside;
+    document.getElementById('statCheckinsToday').textContent = stats.checkins_today;
+    document.getElementById('statFlagged').textContent = stats.flagged;
+  } catch (err) {
+    // leave placeholders on failure
+  }
+}
+
+function attachSearch(){
+  const rows = document.querySelectorAll('#logBody tr');
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(q) ? '' : 'none';
+    });
+  });
+}
+
+if(refreshBtn){
+  refreshBtn.addEventListener('click', () => { loadLogs(); loadStats(); });
+}
+
+loadLogs();
+loadStats();
+setInterval(() => { loadLogs(); loadStats(); }, 15000);
+</script>
+</body>
+</html>

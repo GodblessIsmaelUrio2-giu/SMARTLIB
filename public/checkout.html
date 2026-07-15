@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIUT SmartLib Pass — Check-Out</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar glass">
+    <div class="brand">
+      <div class="brand-mark">
+        <img src="assets/logo.png" alt="KIUT logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span class="fallback" style="display:none;">KIUT</span>
+      </div>
+      <div class="brand-text">
+        <h1>SmartLib Pass</h1>
+        <p>Check-out terminal</p>
+      </div>
+    </div>
+    <a href="dashboard.html" class="back-link"><i class="ti ti-layout-dashboard"></i> Librarian dashboard</a>
+  </header>
+
+  <main class="main">
+    <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+
+      <div class="kiosk glass" id="kiosk">
+        <div class="kiosk-sheen"></div>
+        <div class="kiosk-scan-line"></div>
+
+        <div class="kiosk-header">
+          <span class="label"><i class="ti ti-door-exit"></i> Exit terminal</span>
+          <span class="clock" id="clock"></span>
+        </div>
+
+        <div style="position:relative; min-height:300px;">
+          <!-- Idle state -->
+          <div class="state-layer active" id="idleState">
+            <div class="idle-icon"><i class="ti ti-id-badge-2"></i></div>
+            <h2>Scan to check out</h2>
+            <p class="sub">Place your university ID barcode in front of the scanner before leaving the library.</p>
+          </div>
+
+          <!-- Checked out state -->
+          <div class="state-layer" id="grantedState">
+            <div class="status-badge"><i class="ti ti-door-exit"></i></div>
+            <div class="status-title granted">Checked out</div>
+            <div class="status-time" id="grantedTime">Time out — 09:05 AM · Session 1h 12m</div>
+            <div class="profile-row">
+              <div class="avatar">EL</div>
+              <div class="profile-meta">
+                <p class="name">Emmanuel John Lymo</p>
+                <p class="reg mono">DCS/33207/2401/DT</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Baggage flag state -->
+          <div class="state-layer" id="flagState">
+            <div class="status-badge warn"><i class="ti ti-alert-triangle"></i></div>
+            <div class="status-title denied" style="color:#8a601f;">Baggage check needed</div>
+            <div class="status-time">No matching baggage tag on file — see librarian before exiting</div>
+          </div>
+        </div>
+
+        <div class="kiosk-footer">
+          <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+          <span id="footerText">Place your ID in front of the scanner</span>
+        </div>
+      </div>
+
+      <div class="demo-controls">
+        <button class="btn btn-primary" id="scanBtn"><i class="ti ti-scan"></i> Tap to scan</button>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>KIUT Library · Gongo la Mboto Campus</span>
+    <span>Terminal 02 · Online</span>
+  </footer>
+
+</div>
+
+<script>
+function updateClock(){
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 1000 * 30);
+
+const kiosk = document.getElementById('kiosk');
+const idleState = document.getElementById('idleState');
+const grantedState = document.getElementById('grantedState');
+const flagState = document.getElementById('flagState');
+const footerText = document.getElementById('footerText');
+const progressFill = document.getElementById('progressFill');
+const grantedTime = document.getElementById('grantedTime');
+const scanBtn = document.getElementById('scanBtn');
+
+// Demo reg numbers to cycle through when calling the real API.
+// Replace this with actual barcode-scanner input in production.
+const demoRegNumbers = [
+  'DCS/33207/2401/DT',
+  'DCS/33082/2401/DT',
+  'DCS/32716/2401/DT',
+  'DCS/35179/2401/DT'
+];
+
+let scanCount = 0;
+let timers = [];
+let scanning = false;
+
+function clearTimers(){
+  timers.forEach(t => clearTimeout(t));
+  timers = [];
+}
+
+function showState(layer){
+  [idleState, grantedState, flagState].forEach(l => l.classList.remove('active'));
+  layer.classList.add('active');
+}
+
+function resetToIdle(){
+  clearTimers();
+  scanning = false;
+  showState(idleState);
+  kiosk.classList.remove('scanning');
+  footerText.textContent = 'Place your ID in front of the scanner';
+  progressFill.style.width = '0%';
+  scanBtn.disabled = false;
+}
+
+async function startScan(){
+  if(scanning) return;
+  scanning = true;
+  scanBtn.disabled = true;
+
+  const regNumber = demoRegNumbers[scanCount % demoRegNumbers.length];
+  scanCount++;
+
+  // 1. Begin scan
+  kiosk.classList.add('scanning');
+  footerText.textContent = 'Reading card…';
+  progressFill.style.width = '35%';
+
+  // 2. Call the real API
+  let result;
+  try {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reg_number: regNumber })
+    });
+    result = await res.json();
+  } catch (err) {
+    result = { checked_out: false, error: 'Network error — try again' };
+  }
+
+  timers.push(setTimeout(() => {
+    kiosk.classList.remove('scanning');
+    if(!result.checked_out){
+      showState(flagState);
+      footerText.textContent = 'Wait for librarian assistance';
+    }else{
+      document.querySelector('#grantedState .avatar').textContent = result.student.initials;
+      document.querySelector('#grantedState .name').textContent = result.student.name;
+      document.querySelector('#grantedState .reg').textContent = result.student.reg_number;
+      grantedTime.textContent = 'Time out — ' + result.time_out + ' · Session ' + result.session;
+      showState(grantedState);
+      footerText.textContent = 'Have a good day';
+    }
+    progressFill.style.width = '100%';
+  }, 1000));
+
+  // 3. Reset to idle
+  timers.push(setTimeout(() => {
+    resetToIdle();
+  }, 4600));
+}
+
+scanBtn.addEventListener('click', startScan);
+
+</script>
+</body>
+</html>
