@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIUT SmartLib Pass — My Pass</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar glass">
+    <div class="brand">
+      <div class="brand-mark">
+        <img src="assets/logo.png" alt="KIUT logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span class="fallback" style="display:none;">KIUT</span>
+      </div>
+      <div class="brand-text">
+        <h1>SmartLib Pass</h1>
+        <p>My pass</p>
+      </div>
+    </div>
+    <a href="index.html" class="back-link"><i class="ti ti-logout"></i> Sign out</a>
+  </header>
+
+  <main class="dash-main" style="max-width:760px; margin:0 auto; width:100%;">
+
+    <!-- Identity card -->
+    <div class="panel glass" id="idCard" style="padding:26px;">
+      <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
+        <div class="avatar" id="pAvatar" style="width:64px;height:64px;font-size:20px;">--</div>
+        <div style="flex:1; min-width:180px;">
+          <p id="pName" style="margin:0; font-weight:700; font-size:19px; font-family:'Archivo',sans-serif;">Loading…</p>
+          <p id="pReg" class="mono" style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">—</p>
+        </div>
+        <div id="pStatusPill"><span class="pill pill-out"><i class="ti ti-loader"></i> Checking…</span></div>
+      </div>
+    </div>
+
+    <!-- Quick stats -->
+    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr); margin-top:16px;">
+      <div class="stat-card glass">
+        <div class="stat-label">Visits this month</div>
+        <div class="stat-value" id="statVisits">—</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-label">Time spent (avg)</div>
+        <div class="stat-value" id="statAvg">—</div>
+      </div>
+      <div class="stat-card glass">
+        <div class="stat-label">Fingerprint</div>
+        <div class="stat-value" id="statFingerprint" style="font-size:16px; display:flex; align-items:center; gap:6px;">—</div>
+      </div>
+    </div>
+
+    <!-- Re-register fingerprint -->
+    <div class="panel glass" style="margin-top:16px; padding:18px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:220px;">
+        <p style="margin:0; font-weight:600; font-size:14px;">Using a new phone?</p>
+        <p style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">Register your fingerprint on this device to keep using fast sign-in.</p>
+      </div>
+      <button class="btn btn-primary" id="reregisterBtn"><i class="ti ti-fingerprint"></i> Register this device</button>
+    </div>
+
+    <!-- Visit history -->
+    <div class="panel glass" style="margin-top:16px;">
+      <div class="panel-header">
+        <h2><i class="ti ti-history" style="margin-right:8px;"></i>Visit history</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Time in</th>
+            <th>Time out</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <footer class="foot">
+    <span>KIUT Library · Gongo la Mboto Campus</span>
+    <span>My pass</span>
+  </footer>
+
+</div>
+
+<script type="module">
+import { startRegistration } from 'https://esm.sh/@simplewebauthn/browser@13.3.0';
+
+const API_BASE = 'https://smartlib-f8ul.onrender.com';
+
+// The reg number should come from wherever your login flow stores it after
+// a successful WebAuthn login (e.g. sessionStorage.setItem('reg_number', regNumber)
+// inside index.html's login/verify success branch). Falling back to a query
+// param for now so this page works stand-alone.
+const params = new URLSearchParams(location.search);
+const regNumber = sessionStorage.getItem('reg_number') || params.get('reg');
+
+const pAvatar = document.getElementById('pAvatar');
+const pName = document.getElementById('pName');
+const pReg = document.getElementById('pReg');
+const pStatusPill = document.getElementById('pStatusPill');
+const statVisits = document.getElementById('statVisits');
+const statAvg = document.getElementById('statAvg');
+const statFingerprint = document.getElementById('statFingerprint');
+const historyBody = document.getElementById('historyBody');
+const reregisterBtn = document.getElementById('reregisterBtn');
+
+function fmtDate(t){
+  if(!t) return '—';
+  return new Date(t).toLocaleDateString([], {month:'short', day:'numeric'});
+}
+function fmtTime(t){
+  if(!t) return '—';
+  return new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+function pillFor(row){
+  if(row.status === 'inside') return '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Inside</span>';
+  if(row.status === 'flagged') return '<span class="pill pill-flag"><i class="ti ti-alert-triangle"></i> ' + (row.flag_reason || 'Flagged') + '</span>';
+  return '<span class="pill pill-out"><i class="ti ti-door-exit"></i> Checked out</span>';
+}
+
+async function loadProfile(){
+  if(!regNumber){
+    pName.textContent = 'No student signed in';
+    pReg.textContent = 'Sign in from the identity portal to view your pass.';
+    historyBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">—</td></tr>';
+    return;
+  }
+
+  try {
+    // Expects a new backend route: GET /api/students/:reg_number/history
+    const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(regNumber)}/history`);
+    if(!res.ok) throw new Error('not found');
+    const data = await res.json();
+
+    pAvatar.textContent = data.student.initials;
+    pName.textContent = data.student.name;
+    pReg.textContent = data.student.reg_number;
+    pStatusPill.innerHTML = data.currently_inside
+      ? '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Currently inside</span>'
+      : '<span class="pill pill-out"><i class="ti ti-door-exit"></i> Not in the library</span>';
+
+    statVisits.textContent = data.visits_this_month ?? '—';
+    statAvg.textContent = data.avg_session ?? '—';
+    statFingerprint.innerHTML = data.has_fingerprint
+      ? '<i class="ti ti-fingerprint" style="color:var(--green-700);"></i> Registered'
+      : '<i class="ti ti-fingerprint-off" style="color:var(--red);"></i> Not set up';
+
+    if(!data.history || data.history.length === 0){
+      historyBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">No visits yet</td></tr>';
+    } else {
+      historyBody.innerHTML = data.history.map(r => `
+        <tr>
+          <td>${fmtDate(r.time_in)}</td>
+          <td>${fmtTime(r.time_in)}</td>
+          <td>${fmtTime(r.time_out)}</td>
+          <td>${pillFor(r)}</td>
+        </tr>
+      `).join('');
+    }
+  } catch (err) {
+    pName.textContent = 'Could not load your pass';
+    pReg.textContent = 'Please try again in a moment.';
+    historyBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--red);">Could not load history</td></tr>';
+  }
+}
+
+reregisterBtn.addEventListener('click', async () => {
+  if(!regNumber){
+    alert('Sign in first from the identity portal.');
+    return;
+  }
+  reregisterBtn.disabled = true;
+  reregisterBtn.innerHTML = '<i class="ti ti-loader"></i> Requesting fingerprint prompt…';
+  try {
+    const optionsRes = await fetch(`${API_BASE}/api/webauthn/register/options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reg_number: regNumber, name: pName.textContent })
+    });
+    const options = await optionsRes.json();
+    if(!optionsRes.ok) throw new Error(options.error || 'Could not start registration');
+
+    const attestation = await startRegistration({ optionsJSON: options });
+
+    const verifyRes = await fetch(`${API_BASE}/api/webauthn/register/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reg_number: regNumber, credential: attestation })
+    });
+    const verifyData = await verifyRes.json();
+    if(!verifyRes.ok || !verifyData.verified) throw new Error(verifyData.error || 'Registration failed');
+
+    reregisterBtn.innerHTML = '<i class="ti ti-check"></i> Registered on this device';
+    loadProfile();
+  } catch (err) {
+    reregisterBtn.innerHTML = '<i class="ti ti-fingerprint"></i> Register this device';
+    reregisterBtn.disabled = false;
+    alert(err.message || 'Registration was cancelled or failed.');
+  }
+});
+
+loadProfile();
+</script>
+</body>
+</html>
