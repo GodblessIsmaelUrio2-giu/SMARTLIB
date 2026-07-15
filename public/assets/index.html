@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIUT SmartLib Pass — Register / Login</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar glass">
+    <div class="brand">
+      <div class="brand-mark">
+        <img src="assets/logo.png" alt="KIUT logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span class="fallback" style="display:none;">KIUT</span>
+      </div>
+      <div class="brand-text">
+        <h1>SmartLib Pass</h1>
+        <p>Register or sign in with your phone</p>
+      </div>
+    </div>
+    <a href="dashboard.html" class="back-link"><i class="ti ti-layout-dashboard"></i> Librarian dashboard</a>
+  </header>
+
+  <main class="main">
+    <div style="display:flex; flex-direction:column; align-items:center; width:100%; gap:20px;">
+
+      <div class="kiosk glass" id="kiosk" style="max-width:420px;">
+        <div class="kiosk-sheen"></div>
+
+        <div class="kiosk-header">
+          <span class="label"><i class="ti ti-fingerprint"></i> Identity</span>
+          <span class="clock" id="clock"></span>
+        </div>
+
+        <div style="padding:30px 26px 10px;">
+
+          <div class="tabs">
+            <button class="tab-btn active" id="tabRegister">Register</button>
+            <button class="tab-btn" id="tabLogin">Login</button>
+          </div>
+
+          <!-- Register form -->
+          <div id="registerPanel">
+            <label class="field-label">Full name</label>
+            <input type="text" id="regName" class="text-input" placeholder="e.g. Shafiuna Ahmadi Libiga">
+
+            <label class="field-label">Registration number</label>
+            <input type="text" id="regNumber" class="text-input mono" placeholder="e.g. DCS/32115/2401/DT">
+
+            <button class="btn btn-primary btn-block" id="registerBtn">
+              <i class="ti ti-fingerprint"></i> Register fingerprint on this phone
+            </button>
+            <p class="hint">You'll be prompted for your phone's fingerprint, Face ID, or screen-lock PIN. Nothing about your biometrics ever leaves your device — only a signed key is stored.</p>
+          </div>
+
+          <!-- Login form -->
+          <div id="loginPanel" style="display:none;">
+            <label class="field-label">Registration number</label>
+            <input type="text" id="loginRegNumber" class="text-input mono" placeholder="e.g. DCS/32115/2401/DT">
+
+            <button class="btn btn-primary btn-block" id="loginBtn">
+              <i class="ti ti-fingerprint"></i> Sign in with fingerprint
+            </button>
+            <p class="hint">Scan the fingerprint you registered with on this phone.</p>
+          </div>
+
+          <div id="statusBox" class="status-box" style="display:none;"></div>
+
+        </div>
+
+        <div class="kiosk-footer">
+          <span id="footerText">Secured by WebAuthn — works with your phone's built-in sensor</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>KIUT Library · Gongo la Mboto Campus</span>
+    <span>Identity portal</span>
+  </footer>
+
+</div>
+
+<style>
+.tabs{display:flex;gap:8px;margin-bottom:18px;}
+.tab-btn{
+  flex:1;
+  padding:10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,0.7);
+  background:rgba(255,255,255,0.4);
+  color:var(--ink-soft);
+  font-weight:600;
+  font-size:13px;
+  cursor:pointer;
+}
+.tab-btn.active{background:var(--green-700);color:#fff;border-color:var(--green-700);}
+.field-label{
+  display:block;
+  font-size:12px;
+  font-weight:600;
+  color:var(--ink-soft);
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+  margin:14px 0 6px;
+}
+.text-input{
+  width:100%;
+  padding:12px 14px;
+  border-radius:var(--radius-sm);
+  border:1px solid rgba(255,255,255,0.7);
+  background:rgba(255,255,255,0.6);
+  font-family:'Inter',sans-serif;
+  font-size:14px;
+  color:var(--ink);
+  outline:none;
+}
+.text-input:focus{border-color:var(--green-500);}
+.btn-block{width:100%;justify-content:center;margin-top:20px;padding:13px;font-size:14px;}
+.hint{font-size:12px;color:var(--ink-soft);margin-top:10px;line-height:1.5;}
+.status-box{
+  margin-top:16px;
+  padding:12px 14px;
+  border-radius:var(--radius-sm);
+  font-size:13px;
+  font-weight:500;
+}
+.status-box.success{background:rgba(74,154,74,0.18);color:var(--green-700);}
+.status-box.error{background:var(--red-bg);color:var(--red);}
+</style>
+
+<script type="module">
+import { startRegistration, startAuthentication } from 'https://esm.sh/@simplewebauthn/browser@10';
+
+// Point this at your Render backend.
+const API_BASE = 'https://smartlib-f8ul.onrender.com';
+
+function updateClock(){
+  const now = new Date();
+  const el = document.getElementById('clock');
+  if(el) el.textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+const tabRegister = document.getElementById('tabRegister');
+const tabLogin = document.getElementById('tabLogin');
+const registerPanel = document.getElementById('registerPanel');
+const loginPanel = document.getElementById('loginPanel');
+const statusBox = document.getElementById('statusBox');
+
+tabRegister.addEventListener('click', () => {
+  tabRegister.classList.add('active');
+  tabLogin.classList.remove('active');
+  registerPanel.style.display = '';
+  loginPanel.style.display = 'none';
+  hideStatus();
+});
+tabLogin.addEventListener('click', () => {
+  tabLogin.classList.add('active');
+  tabRegister.classList.remove('active');
+  loginPanel.style.display = '';
+  registerPanel.style.display = 'none';
+  hideStatus();
+});
+
+function showStatus(message, type){
+  statusBox.textContent = message;
+  statusBox.className = 'status-box ' + type;
+  statusBox.style.display = 'block';
+}
+function hideStatus(){
+  statusBox.style.display = 'none';
+}
+
+if(!window.PublicKeyCredential){
+  showStatus('This browser does not support fingerprint sign-in. Please use a modern mobile browser (Chrome, Safari) over HTTPS.', 'error');
+}
+
+document.getElementById('registerBtn').addEventListener('click', async () => {
+  const name = document.getElementById('regName').value.trim();
+  const regNumber = document.getElementById('regNumber').value.trim();
+  if(!name || !regNumber){
+    showStatus('Please enter your name and registration number.', 'error');
+    return;
+  }
+
+  try {
+    hideStatus();
+    showStatus('Requesting fingerprint prompt…', 'success');
+
+    const optionsRes = await fetch(`${API_BASE}/api/webauthn/register/options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reg_number: regNumber, name })
+    });
+    const options = await optionsRes.json();
+    if(!optionsRes.ok) throw new Error(options.error || 'Could not start registration');
+
+    const attestation = await startRegistration({ optionsJSON: options });
+
+    const verifyRes = await fetch(`${API_BASE}/api/webauthn/register/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reg_number: regNumber, name, credential: attestation })
+    });
+    const verifyData = await verifyRes.json();
+    if(!verifyRes.ok || !verifyData.verified) throw new Error(verifyData.error || 'Registration failed');
+
+    showStatus('Fingerprint registered! You can now use "Login" on this phone.', 'success');
+  } catch (err) {
+    showStatus(err.message || 'Registration was cancelled or failed.', 'error');
+  }
+});
+
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const regNumber = document.getElementById('loginRegNumber').value.trim();
+  if(!regNumber){
+    showStatus('Please enter your registration number.', 'error');
+    return;
+  }
+
+  try {
+    hideStatus();
+    showStatus('Requesting fingerprint prompt…', 'success');
+
+    const optionsRes = await fetch(`${API_BASE}/api/webauthn/login/options`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reg_number: regNumber })
+    });
+    const options = await optionsRes.json();
+    if(!optionsRes.ok) throw new Error(options.error || 'No fingerprint registered for this ID yet');
+
+    const assertion = await startAuthentication({ optionsJSON: options });
+
+    const verifyRes = await fetch(`${API_BASE}/api/webauthn/login/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reg_number: regNumber, credential: assertion })
+    });
+    const verifyData = await verifyRes.json();
+    if(!verifyRes.ok || !verifyData.verified) throw new Error(verifyData.error || 'Login failed');
+
+    showStatus(`Welcome back, ${verifyData.name}. Signed in at ${verifyData.time}.`, 'success');
+  } catch (err) {
+    showStatus(err.message || 'Login was cancelled or failed.', 'error');
+  }
+});
+</script>
+</body>
+</html>
