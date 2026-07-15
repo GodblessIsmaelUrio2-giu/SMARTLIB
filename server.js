@@ -200,9 +200,10 @@ app.post('/api/webauthn/register/options', async (req, res) => {
     .select('credential_id, transports')
     .eq('student_id', student.id);
 
-  const options = await generateRegistrationOptions({
+ const options = await generateRegistrationOptions({
     rpName: RP_NAME,
     rpID: RP_ID,
+    userID: new TextEncoder().encode(student.id),  // ← ADD THIS LINE
     userName: reg_number,
     userDisplayName: name,
     attestationType: 'none',
