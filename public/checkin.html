@@ -87,6 +87,9 @@
 </div>
 
 <script>
+// Point this at your Render backend — same domain used by index.html.
+const API_BASE = 'https://smartlib-f8ul.onrender.com';
+
 function updateClock(){
   const now = new Date();
   document.getElementById('clock').textContent = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
@@ -152,7 +155,7 @@ async function startScan(){
   // 2. Call the real API
   let result;
   try {
-    const res = await fetch('/api/checkin', {
+    const res = await fetch(`${API_BASE}/api/checkin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reg_number: regNumber })

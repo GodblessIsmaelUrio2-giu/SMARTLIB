@@ -108,6 +108,9 @@
 </div>
 
 <script>
+// Point this at your Render backend — same domain used by index.html.
+const API_BASE = 'https://smartlib-f8ul.onrender.com';
+
 const searchInput = document.getElementById('searchInput');
 const logBody = document.getElementById('logBody');
 const refreshBtn = document.querySelector('.panel-header .btn-primary');
@@ -125,7 +128,7 @@ function fmt(t){
 
 async function loadLogs(){
   try {
-    const res = await fetch('/api/logs');
+    const res = await fetch(`${API_BASE}/api/logs`);
     const rows = await res.json();
     if(!Array.isArray(rows) || rows.length === 0){
       logBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No entries yet</td></tr>';
@@ -148,7 +151,7 @@ async function loadLogs(){
 
 async function loadStats(){
   try {
-    const res = await fetch('/api/stats');
+    const res = await fetch(`${API_BASE}/api/stats`);
     const stats = await res.json();
     document.getElementById('statActiveInside').textContent = stats.active_inside;
     document.getElementById('statCheckinsToday').textContent = stats.checkins_today;

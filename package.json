@@ -11,7 +11,9 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@simplewebauthn/server": "^10.0.1",
     "@supabase/supabase-js": "^2.45.4",
+    "cors": "^2.8.5",
     "express": "^4.19.2"
   }
 }
