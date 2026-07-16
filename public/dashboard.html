@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KIUT SmartLib Pass — Librarian dashboard</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f6e2f">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SmartLib Pass">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 </head>
@@ -30,11 +36,11 @@
 
   <main class="dash-main">
 
-    <!-- Section tabs -->
     <div class="dash-tabs glass">
       <button class="dash-tab active" data-tab="overview"><i class="ti ti-layout-dashboard"></i> Overview</button>
       <button class="dash-tab" data-tab="override"><i class="ti ti-hand-stop"></i> Manual override</button>
       <button class="dash-tab" data-tab="roster"><i class="ti ti-users"></i> Student roster</button>
+      <button class="dash-tab" data-tab="trends"><i class="ti ti-chart-bar"></i> Trends</button>
       <button class="dash-tab" data-tab="settings"><i class="ti ti-settings"></i> Settings</button>
     </div>
 
@@ -67,6 +73,8 @@
         <div class="panel-header">
           <h2><span class="live-dot"></span>Live entry log</h2>
           <div class="actions">
+            <input type="date" id="dateFrom" class="text-input" style="width:auto;">
+            <input type="date" id="dateTo" class="text-input" style="width:auto;">
             <div class="search-box">
               <i class="ti ti-search"></i>
               <input type="text" placeholder="Search by name or reg number" id="searchInput">
@@ -112,6 +120,7 @@
           </div>
           <button class="btn btn-primary" id="clearFlagBtn"><i class="ti ti-check"></i> Clear flag</button>
         </div>
+        <div id="clearFlagStatus" class="status-box" style="display:none; margin-top:16px;"></div>
       </div>
     </section>
 
@@ -130,12 +139,24 @@
         </div>
         <table>
           <thead>
-            <tr><th>Reg number</th><th>Name</th><th>Fingerprint</th><th></th></tr>
+            <tr><th>Reg number</th><th>Name</th><th>Fingerprint</th><th>Alert / notes</th><th></th></tr>
           </thead>
           <tbody id="rosterBody">
-            <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
           </tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- ===== TRENDS ===== -->
+    <section class="dash-panel" id="tab-trends" style="display:none;">
+      <div class="panel glass" style="padding:22px;">
+        <h2 style="font-size:15px; margin-bottom:14px;">Busiest hours (last 30 days)</h2>
+        <div id="hourChart" style="display:flex; align-items:flex-end; gap:3px; height:140px;"></div>
+      </div>
+      <div class="panel glass" style="padding:22px; margin-top:16px;">
+        <h2 style="font-size:15px; margin-bottom:14px;">Busiest days of the week (last 30 days)</h2>
+        <div id="dayChart" style="display:flex; align-items:flex-end; gap:8px; height:140px;"></div>
       </div>
     </section>
 
@@ -161,42 +182,43 @@
 
 <style>
 .dash-tabs{display:flex;gap:6px;padding:8px;margin-bottom:16px;overflow-x:auto;}
-.dash-tab{
-  display:flex;align-items:center;gap:6px;
-  padding:10px 16px;border-radius:999px;border:none;
-  background:transparent;color:var(--ink-soft);
-  font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
-  cursor:pointer;white-space:nowrap;transition:background .15s,color .15s;
-}
+.dash-tab{display:flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;border:none;background:transparent;color:var(--ink-soft);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s;}
 .dash-tab:hover{background:rgba(255,255,255,0.5);}
 .dash-tab.active{background:var(--green-700);color:#fff;}
 .field-label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin:0 0 6px;}
-.text-input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);outline:none;}
+.text-input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);outline:none;}
 .text-input:focus{border-color:var(--green-500);}
 .status-box{padding:12px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;}
 .status-box.error{background:var(--red-bg);color:var(--red);}
 .status-box.success{background:rgba(74,154,74,0.18);color:var(--green-700);}
+.alert-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:0.04em;}
+.alert-banned{background:var(--red-bg);color:var(--red);}
+.alert-vip{background:rgba(217,164,65,0.22);color:#8a601f;}
+.alert-accommodation{background:rgba(74,154,74,0.18);color:var(--green-700);}
+.roster-note-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;text-decoration:underline;}
+.bar-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:6px;}
+.bar-col .bar{width:100%;background:var(--green-500);border-radius:4px 4px 0 0;min-height:2px;}
+.bar-col .bar-label{font-size:10px;color:var(--ink-soft);}
 </style>
 
 <script>
 const API_BASE = 'https://smartlib-f8ul.onrender.com';
 
-// ---- Guard: require a librarian session ----
 if(!sessionStorage.getItem('librarian_token')){
   window.location.href = 'librarian-login.html';
 }
 
-// ---- Tabs ----
 document.querySelectorAll('.dash-tab').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.dash-panel').forEach(p => p.style.display = 'none');
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).style.display = '';
+    if(btn.dataset.tab === 'roster') loadRoster();
+    if(btn.dataset.tab === 'trends') loadTrends();
   });
 });
 
-// ---- Sign out ----
 function signOut(){
   sessionStorage.removeItem('librarian_token');
   window.location.href = 'librarian-login.html';
@@ -204,9 +226,11 @@ function signOut(){
 document.getElementById('signOutLink').addEventListener('click', e => { e.preventDefault(); signOut(); });
 document.getElementById('settingsSignOutBtn').addEventListener('click', signOut);
 
-// ---- Overview: logs + stats (same as before) ----
+// ---- Overview ----
 const logBody = document.getElementById('logBody');
 const searchInput = document.getElementById('searchInput');
+const dateFrom = document.getElementById('dateFrom');
+const dateTo = document.getElementById('dateTo');
 
 function pillFor(row){
   if(row.status === 'inside') return '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Inside</span>';
@@ -217,7 +241,10 @@ function fmt(t){ return t ? new Date(t).toLocaleTimeString([], {hour:'2-digit', 
 
 async function loadLogs(){
   try {
-    const res = await fetch(`${API_BASE}/api/logs`);
+    const params = new URLSearchParams();
+    if(dateFrom.value) params.set('from', dateFrom.value);
+    if(dateTo.value) params.set('to', dateTo.value);
+    const res = await fetch(`${API_BASE}/api/logs?${params}`);
     const rows = await res.json();
     if(!Array.isArray(rows) || rows.length === 0){
       logBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No entries yet</td></tr>';
@@ -242,6 +269,8 @@ searchInput.addEventListener('input', () => {
     row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
 });
+dateFrom.addEventListener('change', loadLogs);
+dateTo.addEventListener('change', loadLogs);
 
 async function loadStats(){
   try {
@@ -302,24 +331,135 @@ document.getElementById('overrideCheckoutBtn').addEventListener('click', async (
     loadLogs(); loadStats();
   } catch (err) { showOverrideStatus(err.message, 'error'); }
 });
-// Note: /api/students/:reg_number/clear-flag is a new endpoint to add server-side if you want this button live.
-document.getElementById('clearFlagBtn').addEventListener('click', () => {
-  showOverrideStatus('Clear-flag endpoint not wired up yet — ask Claude to add it when ready.', 'error');
+
+const clearFlagStatus = document.getElementById('clearFlagStatus');
+document.getElementById('clearFlagBtn').addEventListener('click', async () => {
+  const reg = document.getElementById('clearFlagReg').value.trim();
+  clearFlagStatus.style.display = 'block';
+  if(!reg){
+    clearFlagStatus.className = 'status-box error';
+    clearFlagStatus.textContent = 'Enter a registration number.';
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(reg)}/clear-flag`, { method: 'POST' });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not clear flag');
+    clearFlagStatus.className = 'status-box success';
+    clearFlagStatus.textContent = 'Flag cleared.';
+    loadLogs(); loadStats();
+  } catch (err) {
+    clearFlagStatus.className = 'status-box error';
+    clearFlagStatus.textContent = err.message;
+  }
 });
 
 // ---- Roster ----
-// Note: /api/students (list) is a new endpoint to add server-side to power this tab.
-async function loadRoster(){
-  const rosterBody = document.getElementById('rosterBody');
-  rosterBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Roster endpoint not wired up yet.</td></tr>';
+const rosterBody = document.getElementById('rosterBody');
+function alertTag(alert_type){
+  if(!alert_type) return '';
+  const label = alert_type === 'vip' ? 'VIP' : alert_type === 'banned' ? 'Banned' : 'Accommodation';
+  return `<span class="alert-tag alert-${alert_type}">${label}</span>`;
 }
-document.getElementById('addStudentBtn').addEventListener('click', () => {
-  alert('Add-student flow not wired up yet — ask Claude to add the endpoint + form when ready.');
+async function loadRoster(){
+  rosterBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>';
+  try {
+    const res = await fetch(`${API_BASE}/api/students`);
+    const students = await res.json();
+    if(!Array.isArray(students) || students.length === 0){
+      rosterBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No students yet</td></tr>';
+      return;
+    }
+    rosterBody.innerHTML = students.map(s => `
+      <tr data-reg="${s.reg_number}">
+        <td class="reg-cell">${s.reg_number}</td>
+        <td>${s.name}</td>
+        <td>${s.has_fingerprint ? '<i class="ti ti-fingerprint" style="color:var(--green-700);"></i>' : '<i class="ti ti-fingerprint-off" style="color:var(--ink-soft);"></i>'}</td>
+        <td>${alertTag(s.alert_type)} ${s.notes ? `<span style="font-size:12px;color:var(--ink-soft);">${s.notes}</span>` : ''} <button class="roster-note-btn" data-edit="${s.reg_number}">edit</button></td>
+        <td><button class="btn" data-remove="${s.reg_number}" style="padding:6px 12px;font-size:12px;"><i class="ti ti-trash"></i></button></td>
+      </tr>
+    `).join('');
+
+    document.querySelectorAll('[data-edit]').forEach(btn => {
+      btn.addEventListener('click', () => editStudent(btn.dataset.edit));
+    });
+    document.querySelectorAll('[data-remove]').forEach(btn => {
+      btn.addEventListener('click', () => removeStudent(btn.dataset.remove));
+    });
+  } catch (err) {
+    rosterBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);">Could not load roster</td></tr>';
+  }
+}
+document.getElementById('rosterSearch').addEventListener('input', (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('#rosterBody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
 });
+
+async function editStudent(reg){
+  const alert_type = prompt('Alert type for this student? (banned / vip / accommodation / leave blank for none)', '');
+  const notes = prompt('Notes (optional):', '');
+  try {
+    await fetch(`${API_BASE}/api/students/${encodeURIComponent(reg)}`, {
+      method: 'PATCH', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ alert_type: alert_type || null, notes })
+    });
+    loadRoster();
+  } catch (err) { alert('Could not update student'); }
+}
+async function removeStudent(reg){
+  if(!confirm(`Remove ${reg} from the roster? This also deletes their visit history.`)) return;
+  try {
+    await fetch(`${API_BASE}/api/students/${encodeURIComponent(reg)}`, { method: 'DELETE' });
+    loadRoster();
+  } catch (err) { alert('Could not remove student'); }
+}
+document.getElementById('addStudentBtn').addEventListener('click', async () => {
+  const name = prompt('Full name:');
+  if(!name) return;
+  const reg_number = prompt('Registration number:');
+  if(!reg_number) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/students`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ name, reg_number })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not add student');
+    loadRoster();
+  } catch (err) { alert(err.message); }
+});
+
+// ---- Trends ----
+async function loadTrends(){
+  const hourChart = document.getElementById('hourChart');
+  const dayChart = document.getElementById('dayChart');
+  try {
+    const res = await fetch(`${API_BASE}/api/stats/trends`);
+    const data = await res.json();
+    const maxHour = Math.max(...data.by_hour, 1);
+    hourChart.innerHTML = data.by_hour.map((v, h) => `
+      <div class="bar-col">
+        <div class="bar" style="height:${(v / maxHour) * 100}px;" title="${v} visits at ${h}:00"></div>
+        <div class="bar-label">${h}</div>
+      </div>
+    `).join('');
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const maxDay = Math.max(...data.by_day, 1);
+    dayChart.innerHTML = data.by_day.map((v, d) => `
+      <div class="bar-col">
+        <div class="bar" style="height:${(v / maxDay) * 100}px;" title="${v} visits"></div>
+        <div class="bar-label">${dayNames[d]}</div>
+      </div>
+    `).join('');
+  } catch (err) {
+    hourChart.innerHTML = '<p style="color:var(--red);font-size:13px;">Could not load trends</p>';
+  }
+}
 
 loadLogs();
 loadStats();
-loadRoster();
 setInterval(() => { loadLogs(); loadStats(); }, 15000);
 </script>
 </body>

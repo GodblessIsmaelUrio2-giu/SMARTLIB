@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KIUT SmartLib Pass — My Pass</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2f6e2f">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SmartLib Pass">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 </head>
@@ -21,7 +27,7 @@
         <p>My pass</p>
       </div>
     </div>
-    <a href="index.html" class="back-link"><i class="ti ti-logout"></i> Sign out</a>
+    <a href="#" id="signOutLink" class="back-link"><i class="ti ti-logout"></i> Sign out</a>
   </header>
 
   <main class="dash-main" style="max-width:760px; margin:0 auto; width:100%;">
@@ -33,6 +39,9 @@
         <div style="flex:1; min-width:180px;">
           <p id="pName" style="margin:0; font-weight:700; font-size:19px; font-family:'Archivo',sans-serif;">Loading…</p>
           <p id="pReg" class="mono" style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">—</p>
+        </div>
+        <div id="badgeWrap" style="display:none;">
+          <span class="pill" style="background:rgba(217,164,65,0.22);color:#8a601f;"><i class="ti ti-award"></i> <span id="pBadge"></span></span>
         </div>
         <div id="pStatusPill"><span class="pill pill-out"><i class="ti ti-loader"></i> Checking…</span></div>
       </div>
@@ -54,13 +63,33 @@
       </div>
     </div>
 
-    <!-- Re-register fingerprint -->
+    <!-- Device management -->
     <div class="panel glass" style="margin-top:16px; padding:18px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
       <div style="flex:1; min-width:220px;">
         <p style="margin:0; font-weight:600; font-size:14px;">Using a new phone?</p>
         <p style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">Register your fingerprint on this device to keep using fast sign-in.</p>
       </div>
       <button class="btn btn-primary" id="reregisterBtn"><i class="ti ti-fingerprint"></i> Register this device</button>
+    </div>
+
+    <div class="panel glass" style="margin-top:16px; padding:18px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:220px;">
+        <p style="margin:0; font-weight:600; font-size:14px;">Remove your fingerprint</p>
+        <p style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">Deregisters this device. You'll need to register again to use fast sign-in.</p>
+      </div>
+      <button class="btn" id="deregisterBtn" style="color:var(--red);"><i class="ti ti-fingerprint-off"></i> Remove fingerprint</button>
+    </div>
+
+    <!-- Notification preferences -->
+    <div class="panel glass" style="margin-top:16px; padding:18px 22px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+      <div style="flex:1; min-width:220px;">
+        <p style="margin:0; font-weight:600; font-size:14px;">Notifications</p>
+        <p style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">Get notified about library announcements and account activity.</p>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+        <input type="checkbox" id="notifyToggle" style="width:18px;height:18px;">
+        <span style="font-size:13px;">Enabled</span>
+      </label>
     </div>
 
     <!-- Visit history -->
@@ -70,12 +99,7 @@
       </div>
       <table>
         <thead>
-          <tr>
-            <th>Date</th>
-            <th>Time in</th>
-            <th>Time out</th>
-            <th>Status</th>
-          </tr>
+          <tr><th>Date</th><th>Time in</th><th>Time out</th><th>Status</th></tr>
         </thead>
         <tbody id="historyBody">
           <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
@@ -97,10 +121,6 @@ import { startRegistration } from 'https://esm.sh/@simplewebauthn/browser@13.3.0
 
 const API_BASE = 'https://smartlib-f8ul.onrender.com';
 
-// The reg number should come from wherever your login flow stores it after
-// a successful WebAuthn login (e.g. sessionStorage.setItem('reg_number', regNumber)
-// inside index.html's login/verify success branch). Falling back to a query
-// param for now so this page works stand-alone.
 const params = new URLSearchParams(location.search);
 const regNumber = sessionStorage.getItem('reg_number') || params.get('reg');
 
@@ -108,20 +128,24 @@ const pAvatar = document.getElementById('pAvatar');
 const pName = document.getElementById('pName');
 const pReg = document.getElementById('pReg');
 const pStatusPill = document.getElementById('pStatusPill');
+const badgeWrap = document.getElementById('badgeWrap');
+const pBadge = document.getElementById('pBadge');
 const statVisits = document.getElementById('statVisits');
 const statAvg = document.getElementById('statAvg');
 const statFingerprint = document.getElementById('statFingerprint');
 const historyBody = document.getElementById('historyBody');
 const reregisterBtn = document.getElementById('reregisterBtn');
+const deregisterBtn = document.getElementById('deregisterBtn');
+const notifyToggle = document.getElementById('notifyToggle');
 
-function fmtDate(t){
-  if(!t) return '—';
-  return new Date(t).toLocaleDateString([], {month:'short', day:'numeric'});
-}
-function fmtTime(t){
-  if(!t) return '—';
-  return new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-}
+document.getElementById('signOutLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  sessionStorage.removeItem('reg_number');
+  window.location.href = 'index.html';
+});
+
+function fmtDate(t){ return t ? new Date(t).toLocaleDateString([], {month:'short', day:'numeric'}) : '—'; }
+function fmtTime(t){ return t ? new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—'; }
 function pillFor(row){
   if(row.status === 'inside') return '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Inside</span>';
   if(row.status === 'flagged') return '<span class="pill pill-flag"><i class="ti ti-alert-triangle"></i> ' + (row.flag_reason || 'Flagged') + '</span>';
@@ -137,7 +161,6 @@ async function loadProfile(){
   }
 
   try {
-    // Expects a new backend route: GET /api/students/:reg_number/history
     const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(regNumber)}/history`);
     if(!res.ok) throw new Error('not found');
     const data = await res.json();
@@ -149,11 +172,17 @@ async function loadProfile(){
       ? '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Currently inside</span>'
       : '<span class="pill pill-out"><i class="ti ti-door-exit"></i> Not in the library</span>';
 
+    if(data.badge){
+      badgeWrap.style.display = '';
+      pBadge.textContent = data.badge;
+    }
+
     statVisits.textContent = data.visits_this_month ?? '—';
     statAvg.textContent = data.avg_session ?? '—';
     statFingerprint.innerHTML = data.has_fingerprint
       ? '<i class="ti ti-fingerprint" style="color:var(--green-700);"></i> Registered'
       : '<i class="ti ti-fingerprint-off" style="color:var(--red);"></i> Not set up';
+    deregisterBtn.disabled = !data.has_fingerprint;
 
     if(!data.history || data.history.length === 0){
       historyBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">No visits yet</td></tr>';
@@ -175,16 +204,12 @@ async function loadProfile(){
 }
 
 reregisterBtn.addEventListener('click', async () => {
-  if(!regNumber){
-    alert('Sign in first from the identity portal.');
-    return;
-  }
+  if(!regNumber){ alert('Sign in first from the identity portal.'); return; }
   reregisterBtn.disabled = true;
   reregisterBtn.innerHTML = '<i class="ti ti-loader"></i> Requesting fingerprint prompt…';
   try {
     const optionsRes = await fetch(`${API_BASE}/api/webauthn/register/options`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reg_number: regNumber, name: pName.textContent })
     });
     const options = await optionsRes.json();
@@ -193,8 +218,7 @@ reregisterBtn.addEventListener('click', async () => {
     const attestation = await startRegistration({ optionsJSON: options });
 
     const verifyRes = await fetch(`${API_BASE}/api/webauthn/register/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ reg_number: regNumber, credential: attestation })
     });
     const verifyData = await verifyRes.json();
@@ -207,6 +231,30 @@ reregisterBtn.addEventListener('click', async () => {
     reregisterBtn.disabled = false;
     alert(err.message || 'Registration was cancelled or failed.');
   }
+});
+
+deregisterBtn.addEventListener('click', async () => {
+  if(!regNumber){ alert('Sign in first.'); return; }
+  if(!confirm('Remove your fingerprint from this account? You will need to register again to use fast sign-in.')) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/webauthn/credentials`, {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reg_number: regNumber })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not remove fingerprint');
+    loadProfile();
+  } catch (err) { alert(err.message); }
+});
+
+notifyToggle.addEventListener('change', async () => {
+  if(!regNumber) return;
+  try {
+    await fetch(`${API_BASE}/api/students/${encodeURIComponent(regNumber)}/preferences`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notify_enabled: notifyToggle.checked })
+    });
+  } catch (err) { /* non-critical, ignore */ }
 });
 
 loadProfile();
