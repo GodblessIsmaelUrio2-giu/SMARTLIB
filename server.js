@@ -188,6 +188,99 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// Student's own history + profile summary (used by profile.html)
+app.get('/api/students/:reg_number/history', async (req, res) => {
+  try {
+    const { reg_number } = req.params;
+
+    const { data: student, error: studentErr } = await supabase
+      .from('students')
+      .select('*')
+      .eq('reg_number', reg_number)
+      .single();
+
+    if (studentErr || !student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    const { data: history, error: historyErr } = await supabase
+      .from('entry_logs')
+      .select('*')
+      .eq('student_id', student.id)
+      .order('time_in', { ascending: false })
+      .limit(50);
+
+    if (historyErr) return res.status(500).json({ error: historyErr.message });
+
+    const currentlyInside = (history || []).some(h => h.status === 'inside');
+
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const visitsThisMonth = (history || []).filter(
+      h => new Date(h.time_in) >= startOfMonth
+    ).length;
+
+    const completed = (history || []).filter(h => h.time_out);
+    let avgSession = '—';
+    if (completed.length > 0) {
+      const totalMs = completed.reduce(
+        (sum, h) => sum + (new Date(h.time_out) - new Date(h.time_in)),
+        0
+      );
+      const avgMins = Math.round(totalMs / completed.length / 60000);
+      avgSession = avgMins >= 60
+        ? `${Math.floor(avgMins / 60)}h ${avgMins % 60}m`
+        : `${avgMins}m`;
+    }
+
+    const { count: credCount } = await supabase
+      .from('webauthn_credentials')
+      .select('*', { count: 'exact', head: true })
+      .eq('student_id', student.id);
+
+    res.json({
+      student: {
+        name: student.name,
+        initials: student.initials,
+        reg_number: student.reg_number,
+      },
+      currently_inside: currentlyInside,
+      visits_this_month: visitsThisMonth,
+      avg_session: avgSession,
+      has_fingerprint: (credCount ?? 0) > 0,
+      history,
+    });
+  } catch (err) {
+    console.error('student history error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Librarian login — simple passcode check, no fingerprint required
+app.post('/api/librarian/login', (req, res) => {
+  const { passcode } = req.body;
+  const expected = process.env.LIBRARIAN_PASSCODE;
+
+  if (!expected) {
+    return res.status(500).json({ ok: false, error: 'Librarian passcode not configured on server' });
+  }
+  if (passcode !== expected) {
+    return res.status(401).json({ ok: false, error: 'Incorrect passcode' });
+  }
+
+  // Demo-grade token — good enough for a shared kiosk device, not a real auth system.
+  const token = Buffer.from(`librarian:${Date.now()}`).toString('base64url');
+  res.json({ ok: true, token });
+});
+
+// ---------- WebAuthn: fingerprint registration ----------
+
+// Step 1: server hands out a challenge + options for navigator.credentials.create()
+app.post('/api/webauthn/register/options', async (req, res) => {
+  // ... route body ...
+});
+
 // ---------- WebAuthn: fingerprint registration ----------
 
 // Step 1: server hands out a challenge + options for navigator.credentials.create()

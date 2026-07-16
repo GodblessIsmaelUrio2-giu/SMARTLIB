@@ -21,7 +21,7 @@
         <p>Register or sign in with your phone</p>
       </div>
     </div>
-    <a href="dashboard.html" class="back-link"><i class="ti ti-layout-dashboard"></i> Librarian dashboard</a>
+    <a href="librarian-login.html" class="back-link"><i class="ti ti-layout-dashboard"></i> Librarian dashboard</a>
   </header>
 
   <main class="main">
@@ -253,7 +253,9 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     const verifyData = await verifyRes.json();
     if(!verifyRes.ok || !verifyData.verified) throw new Error(verifyData.error || 'Login failed');
 
-    showStatus(`Welcome back, ${verifyData.name}. Signed in at ${verifyData.time}.`, 'success');
+    sessionStorage.setItem('reg_number', regNumber);
+showStatus(`Welcome back, ${verifyData.name}. Redirecting…`, 'success');
+setTimeout(() => { window.location.href = 'profile.html'; }, 900);
   } catch (err) {
     showStatus(err.message || 'Login was cancelled or failed.', 'error');
   }
