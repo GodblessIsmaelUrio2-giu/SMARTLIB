@@ -57,7 +57,7 @@ create policy "Allow anon read access to entry_logs"
   to anon
   using (true);
 
--- 5. Seed data matching the demo names in checkin.html / checkout.html
+-- 5. Seed data (demo students)
 insert into students (reg_number, name, initials) values
   ('DCS/32115/2401/DT', 'Shafiuna Ahmadi Libiga', 'SL'),
   ('DCS/30117/2301/DT', 'Urio Ismael Godbless',   'UI'),

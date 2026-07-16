@@ -1,11 +1,9 @@
 // Minimal service worker — required by Chrome for the "Install app" prompt.
 // Caches the app shell so pages still load offline; API calls always go to the network.
 
-const CACHE_NAME = 'smartlib-pass-v1';
+const CACHE_NAME = 'smartlib-pass-v2';
 const APP_SHELL = [
   '/index.html',
-  '/checkin.html',
-  '/checkout.html',
   '/dashboard.html',
   '/librarian-login.html',
   '/profile.html',

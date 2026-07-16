@@ -184,8 +184,27 @@ const reregisterBtn = document.getElementById('reregisterBtn');
 const deregisterBtn = document.getElementById('deregisterBtn');
 const notifyToggle = document.getElementById('notifyToggle');
 
-document.getElementById('signOutLink').addEventListener('click', (e) => {
+const signOutLink = document.getElementById('signOutLink');
+signOutLink.addEventListener('click', async (e) => {
   e.preventDefault();
+  if(signOutLink.dataset.busy) return;
+  signOutLink.dataset.busy = '1';
+  const originalHTML = signOutLink.innerHTML;
+  signOutLink.innerHTML = '<i class="ti ti-loader data-state-spin"></i> Signing out…';
+
+  if(regNumber){
+    try {
+      await fetch(`${API_BASE}/api/checkout`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reg_number: regNumber })
+      });
+      // A non-ok response here just means there was no open session to close
+      // (e.g. a librarian already checked them out) — sign-out proceeds regardless.
+    } catch (err) {
+      // Network hiccup shouldn't block sign-out either.
+    }
+  }
+
   sessionStorage.removeItem('reg_number');
   window.location.href = 'index.html';
 });

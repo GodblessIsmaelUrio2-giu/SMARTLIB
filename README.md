@@ -14,8 +14,6 @@ kiut-smartlib/
 ├── supabase/
 │   └── schema.sql         # run this in Supabase to create tables + seed data
 └── public/                # your kiosk pages, now wired to the API
-    ├── checkin.html
-    ├── checkout.html
     ├── dashboard.html
     └── assets/style.css
 ```
@@ -47,8 +45,9 @@ npm install
 npm start
 ```
 
-Visit `http://localhost:3000/checkin.html`, `checkout.html`, and
-`dashboard.html`.
+Visit `http://localhost:3000/dashboard.html` — check-in/check-out are now
+done from the dashboard's **Manual override** tab rather than standalone
+kiosk pages.
 
 ## 3. Deploy to Render
 
@@ -62,15 +61,14 @@ Visit `http://localhost:3000/checkin.html`, `checkout.html`, and
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
 5. Deploy. Render gives you a URL like `https://kiut-smartlib-pass.onrender.com`.
-   - `/checkin.html`, `/checkout.html`, `/dashboard.html` are your kiosk pages
+   - `/dashboard.html` is your librarian dashboard (check-in/check-out is done via its Manual override tab)
    - `/api/checkin`, `/api/checkout`, `/api/logs`, `/api/stats` are the API routes
 
-## How the demo scan buttons work now
+## How manual check-in/check-out works now
 
-The "Tap to scan" buttons cycle through a fixed list of registration numbers
-(`demoRegNumbers` in each HTML file) and call the real API instead of making up
-random results. Swap that list — or wire it to an actual barcode scanner input
-— when you're ready to go beyond demo mode.
+Check-in and check-out no longer have dedicated kiosk pages (`checkin.html` /
+`checkout.html` were removed). Use the **Manual override** tab in
+`dashboard.html` to check a student in or out by registration number instead.
 
 ## Notes / next steps
 

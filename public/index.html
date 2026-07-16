@@ -254,8 +254,13 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     if(!verifyRes.ok || !verifyData.verified) throw new Error(verifyData.error || 'Login failed');
 
     sessionStorage.setItem('reg_number', regNumber);
-showStatus(`Welcome back, ${verifyData.name}. Redirecting…`, 'success');
-setTimeout(() => { window.location.href = 'profile.html'; }, 900);
+    const checkinMsg = verifyData.already_inside
+      ? `Welcome back, ${verifyData.name}. You're already checked in.`
+      : verifyData.checked_in
+        ? `Welcome back, ${verifyData.name}. Checked in at ${verifyData.time_in}.`
+        : `Welcome back, ${verifyData.name}.`;
+    showStatus(`${checkinMsg} Redirecting…`, 'success');
+    setTimeout(() => { window.location.href = 'profile.html'; }, 900);
   } catch (err) {
     showStatus(err.message || 'Login was cancelled or failed.', 'error');
   }

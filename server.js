@@ -751,7 +751,48 @@ app.post('/api/webauthn/login/verify', async (req, res) => {
       .eq('id', savedCred.id);
 
     challengeStore.delete(reg_number);
-    res.json({ verified: true, name: student.name, time: fmtTime(new Date()) });
+
+    // Fingerprint login = check-in. If they're already checked in (e.g. they
+    // closed the browser last time without signing out), don't create a
+    // duplicate open entry — just report the existing session.
+    let timeIn = null;
+    let alreadyInside = false;
+    try {
+      const { data: openEntry } = await supabase
+        .from('entry_logs')
+        .select('time_in')
+        .eq('student_id', student.id)
+        .eq('status', 'inside')
+        .order('time_in', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (openEntry) {
+        alreadyInside = true;
+        timeIn = openEntry.time_in;
+      } else {
+        const { data: newEntry, error: entryErr } = await supabase
+          .from('entry_logs')
+          .insert({ student_id: student.id, status: 'inside' })
+          .select()
+          .single();
+        if (entryErr) throw entryErr;
+        timeIn = newEntry.time_in;
+      }
+    } catch (checkinErr) {
+      // Don't fail the whole login if the check-in write has a problem —
+      // the student is still verified, they just won't show as "inside" yet.
+      console.error('auto check-in on login error:', checkinErr);
+    }
+
+    res.json({
+      verified: true,
+      name: student.name,
+      time: fmtTime(new Date()),
+      checked_in: !!timeIn,
+      already_inside: alreadyInside,
+      time_in: timeIn ? fmtTime(timeIn) : null,
+    });
   } catch (err) {
     console.error('login/verify error:', err);
     res.status(400).json({ verified: false, error: err.message });
