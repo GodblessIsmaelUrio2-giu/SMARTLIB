@@ -35,15 +35,22 @@
     <!-- Identity card -->
     <div class="panel glass" id="idCard" style="padding:26px;">
       <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap;">
-        <div class="avatar" id="pAvatar" style="width:64px;height:64px;font-size:20px;">--</div>
-        <div style="flex:1; min-width:180px;">
+        <div class="avatar" id="pAvatar" style="width:64px;height:64px;font-size:20px;flex-shrink:0;">--</div>
+        <div style="flex:1 1 auto; min-width:180px;">
           <p id="pName" style="margin:0; font-weight:700; font-size:19px; font-family:'Archivo',sans-serif;">Loading…</p>
-          <p id="pReg" class="mono" style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">—</p>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:4px;">
+            <p id="pReg" class="mono" style="margin:0; font-size:13px; color:var(--ink-soft);">—</p>
+            <span id="pMemberSince" style="display:none; font-size:12px; color:var(--ink-soft);">
+              <i class="ti ti-calendar" style="font-size:13px; vertical-align:-1px;"></i> <span id="pMemberSinceText"></span>
+            </span>
+          </div>
         </div>
-        <div id="badgeWrap" style="display:none;">
-          <span class="pill" style="background:rgba(217,164,65,0.22);color:#8a601f;"><i class="ti ti-award"></i> <span id="pBadge"></span></span>
+        <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+          <div id="badgeWrap" style="display:none;">
+            <span class="pill" style="background:rgba(217,164,65,0.22);color:#8a601f;"><i class="ti ti-award"></i> <span id="pBadge"></span></span>
+          </div>
+          <div id="pStatusPill"><span class="pill pill-out"><i class="ti ti-loader"></i> Checking…</span></div>
         </div>
-        <div id="pStatusPill"><span class="pill pill-out"><i class="ti ti-loader"></i> Checking…</span></div>
       </div>
     </div>
 
@@ -97,12 +104,12 @@
       <div class="panel-header">
         <h2><i class="ti ti-history" style="margin-right:8px;"></i>Visit history</h2>
       </div>
-      <table>
+      <table class="responsive-stack">
         <thead>
           <tr><th>Date</th><th>Time in</th><th>Time out</th><th>Status</th></tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
+          <tr><td colspan="4" style="padding:28px 22px;"><div class="data-state"><i class="ti ti-loader-2 data-state-spin"></i><p>Loading…</p></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -116,6 +123,43 @@
 
 </div>
 
+<!-- Shared modal (replaces browser confirm) -->
+<div class="modal-overlay" id="modalOverlay" style="display:none;">
+  <div class="modal-box glass-strong" id="modalBox">
+    <h3 id="modalTitle"></h3>
+    <div id="modalMessage" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn" id="modalCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="modalConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shared toast (replaces browser alert) -->
+<div id="toastContainer"></div>
+
+<style>
+.data-state{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 10px;color:var(--ink-soft);text-align:center;}
+.data-state i{font-size:26px;opacity:0.7;}
+.data-state p{margin:0;font-size:13px;}
+.data-state-error{color:var(--red);}
+.data-state-error i{color:var(--red);opacity:1;}
+.data-state-spin{animation:data-state-spin 1s linear infinite;}
+@keyframes data-state-spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion: reduce){.data-state-spin{animation:none;}}
+.modal-overlay{position:fixed;inset:0;background:rgba(20,40,20,0.38);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}.modal-box{width:100%;max-width:420px;padding:24px;border-radius:var(--radius);animation:modal-in .18s ease;}
+@keyframes modal-in{from{opacity:0;transform:translateY(8px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+.modal-box h3{font-size:16px;margin-bottom:14px;color:var(--ink);}
+#modalMessage{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:6px;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+.modal-actions .btn.danger{background:var(--red);border-color:var(--red);color:#fff;}
+.modal-actions .btn.danger:hover{background:#a03f2c;}
+#toastContainer{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:2000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+.toast{background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13px;font-weight:500;box-shadow:var(--glass-shadow);opacity:1;transition:opacity .3s ease;}
+.toast.error{background:var(--red);}
+.toast.success{background:var(--green-700);}
+</style>
+
 <script type="module">
 import { startRegistration } from 'https://esm.sh/@simplewebauthn/browser@13.3.0';
 
@@ -127,6 +171,8 @@ const regNumber = sessionStorage.getItem('reg_number') || params.get('reg');
 const pAvatar = document.getElementById('pAvatar');
 const pName = document.getElementById('pName');
 const pReg = document.getElementById('pReg');
+const pMemberSince = document.getElementById('pMemberSince');
+const pMemberSinceText = document.getElementById('pMemberSinceText');
 const pStatusPill = document.getElementById('pStatusPill');
 const badgeWrap = document.getElementById('badgeWrap');
 const pBadge = document.getElementById('pBadge');
@@ -145,6 +191,50 @@ document.getElementById('signOutLink').addEventListener('click', (e) => {
 });
 
 function fmtDate(t){ return t ? new Date(t).toLocaleDateString([], {month:'short', day:'numeric'}) : '—'; }
+
+// ---- Toast (replaces browser alert()) ----
+function toast(msg, type){
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || 'success');
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 300);
+  }, 2800);
+}
+
+// ---- Confirm modal (replaces browser confirm()) ----
+const modalOverlay = document.getElementById('modalOverlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalMessage = document.getElementById('modalMessage');
+const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+const modalCancelBtn = document.getElementById('modalCancelBtn');
+
+function confirmModal({ title, message, confirmLabel = 'Confirm', danger = false }){
+  return new Promise(resolve => {
+    modalTitle.textContent = title || '';
+    modalMessage.style.display = '';
+    modalMessage.textContent = message || '';
+    modalConfirmBtn.textContent = confirmLabel;
+    modalConfirmBtn.className = danger ? 'btn danger' : 'btn btn-primary';
+    modalOverlay.style.display = 'flex';
+
+    function cleanup(){
+      modalOverlay.style.display = 'none';
+      modalConfirmBtn.onclick = null;
+      modalCancelBtn.onclick = null;
+      document.removeEventListener('keydown', onKeydown);
+    }
+    function onKeydown(e){ if(e.key === 'Escape'){ cleanup(); resolve(false); } }
+    document.addEventListener('keydown', onKeydown);
+
+    modalConfirmBtn.onclick = () => { cleanup(); resolve(true); };
+    modalCancelBtn.onclick = () => { cleanup(); resolve(false); };
+  });
+}
+
 function fmtTime(t){ return t ? new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—'; }
 function pillFor(row){
   if(row.status === 'inside') return '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Inside</span>';
@@ -168,6 +258,10 @@ async function loadProfile(){
     pAvatar.textContent = data.student.initials;
     pName.textContent = data.student.name;
     pReg.textContent = data.student.reg_number;
+    if(data.student.member_since){
+      pMemberSince.style.display = '';
+      pMemberSinceText.textContent = 'Member since ' + new Date(data.student.member_since).toLocaleDateString([], {month:'long', year:'numeric'});
+    }
     pStatusPill.innerHTML = data.currently_inside
       ? '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Currently inside</span>'
       : '<span class="pill pill-out"><i class="ti ti-door-exit"></i> Not in the library</span>';
@@ -185,26 +279,26 @@ async function loadProfile(){
     deregisterBtn.disabled = !data.has_fingerprint;
 
     if(!data.history || data.history.length === 0){
-      historyBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">No visits yet</td></tr>';
+      historyBody.innerHTML = '<tr><td colspan="4" style="padding:28px 22px;"><div class="data-state"><i class="ti ti-history"></i><p>No visits yet</p></div></td></tr>';
     } else {
       historyBody.innerHTML = data.history.map(r => `
         <tr>
-          <td>${fmtDate(r.time_in)}</td>
-          <td>${fmtTime(r.time_in)}</td>
-          <td>${fmtTime(r.time_out)}</td>
-          <td>${pillFor(r)}</td>
+          <td data-label="Date">${fmtDate(r.time_in)}</td>
+          <td data-label="Time in">${fmtTime(r.time_in)}</td>
+          <td data-label="Time out">${fmtTime(r.time_out)}</td>
+          <td data-label="Status">${pillFor(r)}</td>
         </tr>
       `).join('');
     }
   } catch (err) {
     pName.textContent = 'Could not load your pass';
     pReg.textContent = 'Please try again in a moment.';
-    historyBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--red);">Could not load history</td></tr>';
+    historyBody.innerHTML = '<tr><td colspan="4" style="padding:28px 22px;"><div class="data-state data-state-error"><i class="ti ti-alert-triangle"></i><p>Could not load history</p></div></td></tr>';
   }
 }
 
 reregisterBtn.addEventListener('click', async () => {
-  if(!regNumber){ alert('Sign in first from the identity portal.'); return; }
+  if(!regNumber){ toast('Sign in first from the identity portal.', 'error'); return; }
   reregisterBtn.disabled = true;
   reregisterBtn.innerHTML = '<i class="ti ti-loader"></i> Requesting fingerprint prompt…';
   try {
@@ -225,17 +319,24 @@ reregisterBtn.addEventListener('click', async () => {
     if(!verifyRes.ok || !verifyData.verified) throw new Error(verifyData.error || 'Registration failed');
 
     reregisterBtn.innerHTML = '<i class="ti ti-check"></i> Registered on this device';
+    toast('Fingerprint registered on this device', 'success');
     loadProfile();
   } catch (err) {
     reregisterBtn.innerHTML = '<i class="ti ti-fingerprint"></i> Register this device';
     reregisterBtn.disabled = false;
-    alert(err.message || 'Registration was cancelled or failed.');
+    toast(err.message || 'Registration was cancelled or failed.', 'error');
   }
 });
 
 deregisterBtn.addEventListener('click', async () => {
-  if(!regNumber){ alert('Sign in first.'); return; }
-  if(!confirm('Remove your fingerprint from this account? You will need to register again to use fast sign-in.')) return;
+  if(!regNumber){ toast('Sign in first.', 'error'); return; }
+  const confirmed = await confirmModal({
+    title: 'Remove fingerprint',
+    message: 'Remove your fingerprint from this account? You will need to register again to use fast sign-in.',
+    confirmLabel: 'Remove fingerprint',
+    danger: true,
+  });
+  if(!confirmed) return;
   try {
     const res = await fetch(`${API_BASE}/api/webauthn/credentials`, {
       method: 'DELETE', headers: { 'Content-Type': 'application/json' },
@@ -243,9 +344,11 @@ deregisterBtn.addEventListener('click', async () => {
     });
     const data = await res.json();
     if(!res.ok || !data.ok) throw new Error(data.error || 'Could not remove fingerprint');
+    toast('Fingerprint removed', 'success');
     loadProfile();
-  } catch (err) { alert(err.message); }
+  } catch (err) { toast(err.message, 'error'); }
 });
+
 
 notifyToggle.addEventListener('change', async () => {
   if(!regNumber) return;

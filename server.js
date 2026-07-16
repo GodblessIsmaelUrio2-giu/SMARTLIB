@@ -143,10 +143,24 @@ app.post('/api/checkout', async (req, res) => {
 // Live log for the dashboard table
 app.get('/api/logs', async (req, res) => {
   try {
-    const { data, error } = await supabase
+    const { from, to } = req.query;
+
+    let query = supabase
       .from('v_entry_log')
       .select('*')
-      .limit(50);
+      .order('time_in', { ascending: false });
+
+    if (from) {
+      query = query.gte('time_in', new Date(from + 'T00:00:00').toISOString());
+    }
+    if (to) {
+      query = query.lte('time_in', new Date(to + 'T23:59:59.999').toISOString());
+    }
+    if (!from && !to) {
+      query = query.limit(50);
+    }
+
+    const { data, error } = await query;
 
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
@@ -177,10 +191,30 @@ app.get('/api/stats', async (req, res) => {
       .select('*', { count: 'exact', head: true })
       .eq('status', 'flagged');
 
+    // Average completed-session length for today (replaces the old hardcoded value)
+    const { data: completedToday, error: completedErr } = await supabase
+      .from('entry_logs')
+      .select('time_in, time_out')
+      .gte('time_in', startOfDay.toISOString())
+      .not('time_out', 'is', null);
+
+    let avgSessionToday = '—';
+    if (!completedErr && completedToday && completedToday.length > 0) {
+      const totalMs = completedToday.reduce(
+        (sum, r) => sum + (new Date(r.time_out) - new Date(r.time_in)),
+        0
+      );
+      const avgMins = Math.round(totalMs / completedToday.length / 60000);
+      avgSessionToday = avgMins >= 60
+        ? `${Math.floor(avgMins / 60)}h ${avgMins % 60}m`
+        : `${avgMins}m`;
+    }
+
     res.json({
       active_inside: activeInside ?? 0,
       checkins_today: checkinsToday ?? 0,
       flagged: flagged ?? 0,
+      avg_session_today: avgSessionToday,
     });
   } catch (err) {
     console.error('stats error:', err);
@@ -244,6 +278,7 @@ app.get('/api/students/:reg_number/history', async (req, res) => {
         name: student.name,
         initials: student.initials,
         reg_number: student.reg_number,
+        member_since: student.created_at,
       },
       currently_inside: currentlyInside,
       visits_this_month: visitsThisMonth,
@@ -253,6 +288,223 @@ app.get('/api/students/:reg_number/history', async (req, res) => {
     });
   } catch (err) {
     console.error('student history error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ---------- Student roster (dashboard "Student roster" tab) ----------
+
+// List all students with fingerprint status, for the roster table
+app.get('/api/students', async (req, res) => {
+  try {
+    const { data: students, error } = await supabase
+      .from('students')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const { data: creds, error: credsErr } = await supabase
+      .from('webauthn_credentials')
+      .select('student_id');
+
+    if (credsErr) return res.status(500).json({ error: credsErr.message });
+
+    const withFp = new Set((creds || []).map(c => c.student_id));
+
+    res.json((students || []).map(s => ({
+      reg_number: s.reg_number,
+      name: s.name,
+      initials: s.initials,
+      alert_type: s.alert_type,
+      notes: s.notes,
+      has_fingerprint: withFp.has(s.id),
+    })));
+  } catch (err) {
+    console.error('students list error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add a student from the roster tab
+app.post('/api/students', async (req, res) => {
+  try {
+    const { name, reg_number } = req.body;
+    if (!name || !reg_number) {
+      return res.status(400).json({ ok: false, error: 'name and reg_number are required' });
+    }
+
+    const initials = name.trim().split(/\s+/).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+    const { data, error } = await supabase
+      .from('students')
+      .insert({ name, reg_number, initials })
+      .select()
+      .single();
+
+    if (error) {
+      const msg = error.code === '23505' ? 'A student with that registration number already exists' : error.message;
+      return res.status(400).json({ ok: false, error: msg });
+    }
+
+    res.json({ ok: true, student: data });
+  } catch (err) {
+    console.error('student add error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Edit a student's alert/notes from the roster tab
+app.patch('/api/students/:reg_number', async (req, res) => {
+  try {
+    const { reg_number } = req.params;
+    const { alert_type, notes } = req.body;
+
+    const update = {};
+    if (alert_type !== undefined) update.alert_type = alert_type || null;
+    if (notes !== undefined) update.notes = notes || null;
+
+    const { data, error } = await supabase
+      .from('students')
+      .update(update)
+      .eq('reg_number', reg_number)
+      .select()
+      .single();
+
+    if (error || !data) return res.status(404).json({ ok: false, error: 'Student not found' });
+    res.json({ ok: true, student: data });
+  } catch (err) {
+    console.error('student patch error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Remove a student from the roster tab
+app.delete('/api/students/:reg_number', async (req, res) => {
+  try {
+    const { reg_number } = req.params;
+    const { error } = await supabase
+      .from('students')
+      .delete()
+      .eq('reg_number', reg_number);
+
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('student delete error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Clear a flagged entry (manual-override tab)
+app.post('/api/students/:reg_number/clear-flag', async (req, res) => {
+  try {
+    const { reg_number } = req.params;
+
+    const { data: student, error: studentErr } = await supabase
+      .from('students')
+      .select('id')
+      .eq('reg_number', reg_number)
+      .single();
+
+    if (studentErr || !student) return res.status(404).json({ ok: false, error: 'Student not found' });
+
+    const { data: flaggedEntry, error: entryErr } = await supabase
+      .from('entry_logs')
+      .select('*')
+      .eq('student_id', student.id)
+      .eq('status', 'flagged')
+      .order('time_in', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (entryErr || !flaggedEntry) {
+      return res.status(404).json({ ok: false, error: 'No flagged entry found for this student' });
+    }
+
+    const { error: updateErr } = await supabase
+      .from('entry_logs')
+      .update({ status: 'inside', flag_reason: null })
+      .eq('id', flaggedEntry.id);
+
+    if (updateErr) return res.status(500).json({ ok: false, error: updateErr.message });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('clear-flag error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Update a student's notification preference (profile.html toggle)
+app.patch('/api/students/:reg_number/preferences', async (req, res) => {
+  try {
+    const { reg_number } = req.params;
+    const { notify_enabled } = req.body;
+
+    const { error } = await supabase
+      .from('students')
+      .update({ notify_enabled: !!notify_enabled })
+      .eq('reg_number', reg_number);
+
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('preferences error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Remove a student's fingerprint (profile.html "Remove fingerprint")
+app.delete('/api/webauthn/credentials', async (req, res) => {
+  try {
+    const { reg_number } = req.body;
+    if (!reg_number) return res.status(400).json({ ok: false, error: 'reg_number is required' });
+
+    const { data: student, error: studentErr } = await supabase
+      .from('students')
+      .select('id')
+      .eq('reg_number', reg_number)
+      .single();
+
+    if (studentErr || !student) return res.status(404).json({ ok: false, error: 'Student not found' });
+
+    const { error } = await supabase
+      .from('webauthn_credentials')
+      .delete()
+      .eq('student_id', student.id);
+
+    if (error) return res.status(500).json({ ok: false, error: error.message });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('webauthn credential delete error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// Busiest hours / days for the Trends tab (last 30 days)
+app.get('/api/stats/trends', async (req, res) => {
+  try {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { data, error } = await supabase
+      .from('entry_logs')
+      .select('time_in')
+      .gte('time_in', thirtyDaysAgo.toISOString());
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const by_hour = new Array(24).fill(0);
+    const by_day = new Array(7).fill(0);
+
+    (data || []).forEach(row => {
+      const d = new Date(row.time_in);
+      by_hour[d.getHours()]++;
+      by_day[d.getDay()]++;
+    });
+
+    res.json({ by_hour, by_day });
+  } catch (err) {
+    console.error('trends error:', err);
     res.status(500).json({ error: err.message });
   }
 });

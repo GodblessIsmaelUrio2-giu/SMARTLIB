@@ -58,9 +58,9 @@
           <div class="stat-delta">Since midnight</div>
         </div>
         <div class="stat-card glass">
-          <div class="stat-label">Avg entry time</div>
-          <div class="stat-value">2.1s</div>
-          <div class="stat-delta">80% faster than logbook</div>
+          <div class="stat-label">Avg session today</div>
+          <div class="stat-value" id="statAvgSession">—</div>
+          <div class="stat-delta flat">Completed visits only</div>
         </div>
         <div class="stat-card glass">
           <div class="stat-label">Flagged entries</div>
@@ -83,12 +83,12 @@
             <button class="btn btn-primary" id="refreshBtn"><i class="ti ti-refresh"></i> Refresh</button>
           </div>
         </div>
-        <table>
+        <table class="responsive-stack">
           <thead>
             <tr><th>Reg number</th><th>Name</th><th>Time in</th><th>Time out</th><th>Status</th></tr>
           </thead>
           <tbody id="logBody">
-            <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
+            <tr><td colspan="5" style="padding:28px 22px;"><div class="data-state"><i class="ti ti-loader-2 data-state-spin"></i><p>Loading…</p></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -137,12 +137,12 @@
             <button class="btn btn-primary" id="addStudentBtn"><i class="ti ti-user-plus"></i> Add student</button>
           </div>
         </div>
-        <table>
+        <table class="responsive-stack">
           <thead>
             <tr><th>Reg number</th><th>Name</th><th>Fingerprint</th><th>Alert / notes</th><th></th></tr>
           </thead>
           <tbody id="rosterBody">
-            <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
+            <tr><td colspan="5" style="padding:28px 22px;"><div class="data-state"><i class="ti ti-loader-2 data-state-spin"></i><p>Loading…</p></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -152,11 +152,11 @@
     <section class="dash-panel" id="tab-trends" style="display:none;">
       <div class="panel glass" style="padding:22px;">
         <h2 style="font-size:15px; margin-bottom:14px;">Busiest hours (last 30 days)</h2>
-        <div id="hourChart" style="display:flex; align-items:flex-end; gap:3px; height:140px;"></div>
+        <div id="hourChart" style="display:flex; align-items:flex-end; gap:3px; height:170px;"></div>
       </div>
       <div class="panel glass" style="padding:22px; margin-top:16px;">
         <h2 style="font-size:15px; margin-bottom:14px;">Busiest days of the week (last 30 days)</h2>
-        <div id="dayChart" style="display:flex; align-items:flex-end; gap:8px; height:140px;"></div>
+        <div id="dayChart" style="display:flex; align-items:flex-end; gap:8px; height:170px;"></div>
       </div>
     </section>
 
@@ -180,11 +180,31 @@
 
 </div>
 
+<!-- Shared modal (replaces browser prompt/confirm) -->
+<div class="modal-overlay" id="modalOverlay" style="display:none;">
+  <div class="modal-box glass-strong" id="modalBox">
+    <h3 id="modalTitle"></h3>
+    <div id="modalMessage" style="display:none;"></div>
+    <div id="modalFields"></div>
+    <div class="modal-actions">
+      <button class="btn" id="modalCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="modalConfirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Shared toast (replaces browser alert) -->
+<div id="toastContainer"></div>
+
 <style>
-.dash-tabs{display:flex;gap:6px;padding:8px;margin-bottom:16px;overflow-x:auto;}
-.dash-tab{display:flex;align-items:center;gap:6px;padding:10px 16px;border-radius:999px;border:none;background:transparent;color:var(--ink-soft);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s;}
+.dash-tabs{display:flex;flex-wrap:nowrap;align-items:stretch;gap:6px;padding:8px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.dash-tab{flex:0 0 auto;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;width:auto;padding:0 16px;margin:0;border-radius:999px;border:none;background:transparent;color:var(--ink-soft);font-family:'Inter',sans-serif;font-size:13px;font-weight:600;line-height:1;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s;}
 .dash-tab:hover{background:rgba(255,255,255,0.5);}
 .dash-tab.active{background:var(--green-700);color:#fff;}
+.dash-tab i{font-size:15px;flex-shrink:0;}
+@media (max-width:700px){
+  .dash-tab{height:40px;font-size:12px;padding:0 12px;}
+}
 .field-label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin:0 0 6px;}
 .text-input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;font-size:16px;color:var(--ink);outline:none;}
 .text-input:focus{border-color:var(--green-500);}
@@ -196,13 +216,129 @@
 .alert-vip{background:rgba(217,164,65,0.22);color:#8a601f;}
 .alert-accommodation{background:rgba(74,154,74,0.18);color:var(--green-700);}
 .roster-note-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:12px;text-decoration:underline;}
-.bar-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:6px;}
+.bar-col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;flex:1;gap:4px;height:100%;}
+.bar-col .bar-value{font-size:10px;font-weight:700;color:var(--green-700);line-height:1;min-height:12px;}
 .bar-col .bar{width:100%;background:var(--green-500);border-radius:4px 4px 0 0;min-height:2px;}
 .bar-col .bar-label{font-size:10px;color:var(--ink-soft);}
+.data-state{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 10px;color:var(--ink-soft);text-align:center;}
+.data-state i{font-size:26px;opacity:0.7;}
+.data-state p{margin:0;font-size:13px;}
+.data-state-error{color:var(--red);}
+.data-state-error i{color:var(--red);opacity:1;}
+.data-state-spin{animation:data-state-spin 1s linear infinite;}
+@keyframes data-state-spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion: reduce){.data-state-spin{animation:none;}}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(20,40,20,0.38);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);}
+.modal-box{width:100%;max-width:420px;padding:24px;border-radius:var(--radius);animation:modal-in .18s ease;}
+@keyframes modal-in{from{opacity:0;transform:translateY(8px) scale(0.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+.modal-box h3{font-size:16px;margin-bottom:14px;color:var(--ink);}
+#modalMessage{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:6px;}
+.modal-field{margin-bottom:14px;}
+.modal-field label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin:0 0 6px;}
+.modal-field select, .modal-field .text-input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.7);font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);outline:none;}
+.modal-field select:focus, .modal-field .text-input:focus{border-color:var(--green-500);}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+.modal-actions .btn.danger{background:var(--red);border-color:var(--red);color:#fff;}
+.modal-actions .btn.danger:hover{background:#a03f2c;}
+
+#toastContainer{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:2000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+.toast{background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13px;font-weight:500;box-shadow:var(--glass-shadow);opacity:1;transition:opacity .3s ease, transform .3s ease;}
+.toast.error{background:var(--red);}
+.toast.success{background:var(--green-700);}
 </style>
 
 <script>
 const API_BASE = 'https://smartlib-f8ul.onrender.com';
+
+// ---- Shared loading / empty / error state builders ----
+// Used anywhere data is fetched, so every table/chart has a consistent,
+// on-brand state instead of plain gray text.
+function stateBlock(icon, msg, variant){
+  const cls = variant === 'error' ? 'data-state data-state-error' : 'data-state';
+  const spin = variant === 'loading' ? ' data-state-spin' : '';
+  return `<div class="${cls}"><i class="ti ${icon}${spin}"></i><p>${msg}</p></div>`;
+}
+function stateRow(colspan, icon, msg, variant){
+  return `<tr><td colspan="${colspan}" style="padding:28px 22px;">${stateBlock(icon, msg, variant)}</td></tr>`;
+}
+function loadingState(msg){ return stateBlock('ti-loader-2', msg || 'Loading…', 'loading'); }
+function emptyState(icon, msg){ return stateBlock(icon || 'ti-inbox', msg, 'empty'); }
+function errorState(msg){ return stateBlock('ti-alert-triangle', msg, 'error'); }
+
+// ---- Toast (replaces browser alert()) ----
+function toast(msg, type){
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || 'success');
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 300);
+  }, 2800);
+}
+
+// ---- Modal (replaces browser prompt()/confirm()) ----
+// openModal({ title, message, fields, confirmLabel, danger })
+// fields: [{ id, label, type:'text'|'select', value, placeholder, options:[{value,label}] }]
+// Resolves with an object keyed by field id, or null if cancelled.
+// A message-only modal (no fields) resolves `true` on confirm.
+const modalOverlay = document.getElementById('modalOverlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalMessage = document.getElementById('modalMessage');
+const modalFields = document.getElementById('modalFields');
+const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+const modalCancelBtn = document.getElementById('modalCancelBtn');
+
+function openModal({ title, message, fields = [], confirmLabel = 'Save', danger = false }){
+  return new Promise(resolve => {
+    modalTitle.textContent = title || '';
+
+    if(message){
+      modalMessage.style.display = '';
+      modalMessage.textContent = message;
+    } else {
+      modalMessage.style.display = 'none';
+    }
+
+    modalFields.innerHTML = fields.map(f => {
+      if(f.type === 'select'){
+        const opts = f.options.map(o => `<option value="${o.value}" ${o.value === (f.value||'') ? 'selected' : ''}>${o.label}</option>`).join('');
+        return `<div class="modal-field"><label>${f.label}</label><select id="modalField_${f.id}">${opts}</select></div>`;
+      }
+      return `<div class="modal-field"><label>${f.label}</label><input type="text" class="text-input" id="modalField_${f.id}" value="${f.value ? f.value.replace(/"/g,'&quot;') : ''}" placeholder="${f.placeholder||''}"></div>`;
+    }).join('');
+
+    modalConfirmBtn.textContent = confirmLabel;
+    modalConfirmBtn.className = danger ? 'btn danger' : 'btn btn-primary';
+    modalOverlay.style.display = 'flex';
+
+    const firstInput = modalFields.querySelector('input, select');
+    if(firstInput) setTimeout(() => firstInput.focus(), 30);
+
+    function cleanup(){
+      modalOverlay.style.display = 'none';
+      modalConfirmBtn.onclick = null;
+      modalCancelBtn.onclick = null;
+      document.removeEventListener('keydown', onKeydown);
+    }
+    function onKeydown(e){
+      if(e.key === 'Escape'){ cleanup(); resolve(null); }
+    }
+    document.addEventListener('keydown', onKeydown);
+
+    modalConfirmBtn.onclick = () => {
+      if(fields.length === 0){ cleanup(); resolve(true); return; }
+      const values = {};
+      fields.forEach(f => { values[f.id] = document.getElementById('modalField_' + f.id).value.trim(); });
+      cleanup();
+      resolve(values);
+    };
+    modalCancelBtn.onclick = () => { cleanup(); resolve(null); };
+  });
+}
+
 
 if(!sessionStorage.getItem('librarian_token')){
   window.location.href = 'librarian-login.html';
@@ -247,20 +383,20 @@ async function loadLogs(){
     const res = await fetch(`${API_BASE}/api/logs?${params}`);
     const rows = await res.json();
     if(!Array.isArray(rows) || rows.length === 0){
-      logBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No entries yet</td></tr>';
+      logBody.innerHTML = stateRow(5, 'ti-inbox', 'No entries yet', 'empty');
       return;
     }
     logBody.innerHTML = rows.map(r => `
       <tr>
-        <td class="reg-cell">${r.reg_number}</td>
-        <td>${r.name}</td>
-        <td>${fmt(r.time_in)}</td>
-        <td>${fmt(r.time_out)}</td>
-        <td>${pillFor(r)}</td>
+        <td class="reg-cell" data-label="Reg number">${r.reg_number}</td>
+        <td data-label="Name">${r.name}</td>
+        <td data-label="Time in">${fmt(r.time_in)}</td>
+        <td data-label="Time out">${fmt(r.time_out)}</td>
+        <td data-label="Status">${pillFor(r)}</td>
       </tr>
     `).join('');
   } catch (err) {
-    logBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);">Could not load logs</td></tr>';
+    logBody.innerHTML = stateRow(5, 'ti-alert-triangle', 'Could not load logs', 'error');
   }
 }
 searchInput.addEventListener('input', () => {
@@ -279,6 +415,7 @@ async function loadStats(){
     document.getElementById('statActiveInside').textContent = stats.active_inside;
     document.getElementById('statCheckinsToday').textContent = stats.checkins_today;
     document.getElementById('statFlagged').textContent = stats.flagged;
+    document.getElementById('statAvgSession').textContent = stats.avg_session_today ?? '—';
   } catch (err) {}
 }
 
@@ -356,27 +493,30 @@ document.getElementById('clearFlagBtn').addEventListener('click', async () => {
 
 // ---- Roster ----
 const rosterBody = document.getElementById('rosterBody');
+let rosterData = [];
 function alertTag(alert_type){
   if(!alert_type) return '';
   const label = alert_type === 'vip' ? 'VIP' : alert_type === 'banned' ? 'Banned' : 'Accommodation';
   return `<span class="alert-tag alert-${alert_type}">${label}</span>`;
 }
 async function loadRoster(){
-  rosterBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>';
+  rosterBody.innerHTML = stateRow(5, 'ti-loader-2', 'Loading…', 'loading');
   try {
     const res = await fetch(`${API_BASE}/api/students`);
     const students = await res.json();
     if(!Array.isArray(students) || students.length === 0){
-      rosterBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No students yet</td></tr>';
+      rosterData = [];
+      rosterBody.innerHTML = stateRow(5, 'ti-users', 'No students yet', 'empty');
       return;
     }
+    rosterData = students;
     rosterBody.innerHTML = students.map(s => `
       <tr data-reg="${s.reg_number}">
-        <td class="reg-cell">${s.reg_number}</td>
-        <td>${s.name}</td>
-        <td>${s.has_fingerprint ? '<i class="ti ti-fingerprint" style="color:var(--green-700);"></i>' : '<i class="ti ti-fingerprint-off" style="color:var(--ink-soft);"></i>'}</td>
-        <td>${alertTag(s.alert_type)} ${s.notes ? `<span style="font-size:12px;color:var(--ink-soft);">${s.notes}</span>` : ''} <button class="roster-note-btn" data-edit="${s.reg_number}">edit</button></td>
-        <td><button class="btn" data-remove="${s.reg_number}" style="padding:6px 12px;font-size:12px;"><i class="ti ti-trash"></i></button></td>
+        <td class="reg-cell" data-label="Reg number">${s.reg_number}</td>
+        <td data-label="Name">${s.name}</td>
+        <td data-label="Fingerprint">${s.has_fingerprint ? '<i class="ti ti-fingerprint" style="color:var(--green-700);"></i>' : '<i class="ti ti-fingerprint-off" style="color:var(--ink-soft);"></i>'}</td>
+        <td data-label="Alert / notes">${alertTag(s.alert_type)} ${s.notes ? `<span style="font-size:12px;color:var(--ink-soft);">${s.notes}</span>` : ''} <button class="roster-note-btn" data-edit="${s.reg_number}">edit</button></td>
+        <td data-label=""><button class="btn" data-remove="${s.reg_number}" style="padding:6px 12px;font-size:12px;"><i class="ti ti-trash"></i></button></td>
       </tr>
     `).join('');
 
@@ -387,7 +527,7 @@ async function loadRoster(){
       btn.addEventListener('click', () => removeStudent(btn.dataset.remove));
     });
   } catch (err) {
-    rosterBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);">Could not load roster</td></tr>';
+    rosterBody.innerHTML = stateRow(5, 'ti-alert-triangle', 'Could not load roster', 'error');
   }
 }
 document.getElementById('rosterSearch').addEventListener('input', (e) => {
@@ -398,50 +538,92 @@ document.getElementById('rosterSearch').addEventListener('input', (e) => {
 });
 
 async function editStudent(reg){
-  const alert_type = prompt('Alert type for this student? (banned / vip / accommodation / leave blank for none)', '');
-  const notes = prompt('Notes (optional):', '');
+  const student = rosterData.find(s => s.reg_number === reg) || {};
+  const result = await openModal({
+    title: `Edit ${student.name || reg}`,
+    fields: [
+      { id: 'alert_type', label: 'Alert type', type: 'select', value: student.alert_type || '',
+        options: [
+          { value: '', label: 'None' },
+          { value: 'banned', label: 'Banned' },
+          { value: 'vip', label: 'VIP' },
+          { value: 'accommodation', label: 'Accommodation' },
+        ] },
+      { id: 'notes', label: 'Notes', value: student.notes || '', placeholder: 'Optional notes' },
+    ],
+    confirmLabel: 'Save changes',
+  });
+  if(!result) return;
   try {
-    await fetch(`${API_BASE}/api/students/${encodeURIComponent(reg)}`, {
+    const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(reg)}`, {
       method: 'PATCH', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ alert_type: alert_type || null, notes })
+      body: JSON.stringify({ alert_type: result.alert_type || null, notes: result.notes || null })
     });
+    if(!res.ok) throw new Error();
+    toast('Student updated', 'success');
     loadRoster();
-  } catch (err) { alert('Could not update student'); }
+  } catch (err) { toast('Could not update student', 'error'); }
 }
 async function removeStudent(reg){
-  if(!confirm(`Remove ${reg} from the roster? This also deletes their visit history.`)) return;
+  const student = rosterData.find(s => s.reg_number === reg);
+  const confirmed = await openModal({
+    title: 'Remove student',
+    message: `Remove ${student ? student.name + ' (' + reg + ')' : reg} from the roster? This also deletes their visit history. This cannot be undone.`,
+    confirmLabel: 'Remove student',
+    danger: true,
+  });
+  if(!confirmed) return;
   try {
     await fetch(`${API_BASE}/api/students/${encodeURIComponent(reg)}`, { method: 'DELETE' });
+    toast('Student removed', 'success');
     loadRoster();
-  } catch (err) { alert('Could not remove student'); }
+  } catch (err) { toast('Could not remove student', 'error'); }
 }
 document.getElementById('addStudentBtn').addEventListener('click', async () => {
-  const name = prompt('Full name:');
-  if(!name) return;
-  const reg_number = prompt('Registration number:');
-  if(!reg_number) return;
+  const result = await openModal({
+    title: 'Add student',
+    fields: [
+      { id: 'name', label: 'Full name', placeholder: 'e.g. Jane Doe' },
+      { id: 'reg_number', label: 'Registration number', placeholder: 'e.g. DCS/12345/2401/DT' },
+    ],
+    confirmLabel: 'Add student',
+  });
+  if(!result) return;
+  if(!result.name || !result.reg_number){ toast('Name and registration number are required', 'error'); return; }
   try {
     const res = await fetch(`${API_BASE}/api/students`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ name, reg_number })
+      body: JSON.stringify({ name: result.name, reg_number: result.reg_number })
     });
     const data = await res.json();
     if(!res.ok || !data.ok) throw new Error(data.error || 'Could not add student');
+    toast('Student added', 'success');
     loadRoster();
-  } catch (err) { alert(err.message); }
+  } catch (err) { toast(err.message, 'error'); }
 });
 
 // ---- Trends ----
 async function loadTrends(){
   const hourChart = document.getElementById('hourChart');
   const dayChart = document.getElementById('dayChart');
+  hourChart.innerHTML = loadingState();
+  dayChart.innerHTML = '';
   try {
     const res = await fetch(`${API_BASE}/api/stats/trends`);
     const data = await res.json();
+
+    const totalVisits = (data.by_hour || []).reduce((a, b) => a + b, 0);
+    if (totalVisits === 0) {
+      hourChart.innerHTML = emptyState('ti-chart-bar', 'No visits in the last 30 days yet');
+      dayChart.innerHTML = '';
+      return;
+    }
+
     const maxHour = Math.max(...data.by_hour, 1);
     hourChart.innerHTML = data.by_hour.map((v, h) => `
       <div class="bar-col">
-        <div class="bar" style="height:${(v / maxHour) * 100}px;" title="${v} visits at ${h}:00"></div>
+        <div class="bar-value">${v > 0 ? v : ''}</div>
+        <div class="bar" style="height:${Math.max((v / maxHour) * 90, 2)}px;" title="${v} visits at ${h}:00"></div>
         <div class="bar-label">${h}</div>
       </div>
     `).join('');
@@ -449,12 +631,14 @@ async function loadTrends(){
     const maxDay = Math.max(...data.by_day, 1);
     dayChart.innerHTML = data.by_day.map((v, d) => `
       <div class="bar-col">
-        <div class="bar" style="height:${(v / maxDay) * 100}px;" title="${v} visits"></div>
+        <div class="bar-value">${v > 0 ? v : ''}</div>
+        <div class="bar" style="height:${Math.max((v / maxDay) * 90, 2)}px;" title="${v} visits"></div>
         <div class="bar-label">${dayNames[d]}</div>
       </div>
     `).join('');
   } catch (err) {
-    hourChart.innerHTML = '<p style="color:var(--red);font-size:13px;">Could not load trends</p>';
+    hourChart.innerHTML = errorState('Could not load trends');
+    dayChart.innerHTML = '';
   }
 }
 

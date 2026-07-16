@@ -614,6 +614,48 @@ footer.foot{
   thead th, tbody td{
     padding:10px 14px;
   }
+
+  /* Card-style layout for data tables instead of horizontal scroll —
+     used by the live log, roster, and visit-history tables. */
+  table.responsive-stack{
+    display:block;
+    overflow-x:visible;
+    white-space:normal;
+  }
+  table.responsive-stack thead{display:none;}
+  table.responsive-stack tbody{display:block;}
+  table.responsive-stack tr{
+    display:block;
+    background:rgba(255,255,255,0.45);
+    border:1px solid rgba(255,255,255,0.6);
+    border-radius:var(--radius-sm);
+    margin:10px 14px;
+    padding:2px 14px;
+  }
+  table.responsive-stack tbody tr:last-child{margin-bottom:14px;}
+  table.responsive-stack td{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:9px 0;
+    border-bottom:1px solid rgba(255,255,255,0.4);
+    text-align:right;
+    white-space:normal;
+  }
+  table.responsive-stack tr td:last-child{border-bottom:none;}
+  table.responsive-stack td[data-label]::before{
+    content:attr(data-label);
+    font-weight:600;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--ink-soft);
+    text-align:left;
+    flex-shrink:0;
+  }
+  table.responsive-stack td[data-label=""]::before{content:none;}
+  table.responsive-stack td[data-label=""]{justify-content:flex-end;}
 }
 
 /* Stat cards: single column on very small phones already handled at 520px,

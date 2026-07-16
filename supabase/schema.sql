@@ -6,12 +6,20 @@ create extension if not exists "pgcrypto";
 
 -- 2. Students table
 create table if not exists students (
-  id           uuid primary key default gen_random_uuid(),
-  reg_number   text not null unique,       -- e.g. DCS/32115/2401/DT
-  name         text not null,
-  initials     text not null,
-  created_at   timestamptz not null default now()
+  id               uuid primary key default gen_random_uuid(),
+  reg_number       text not null unique,       -- e.g. DCS/32115/2401/DT
+  name             text not null,
+  initials         text not null,
+  alert_type       text check (alert_type in ('banned', 'vip', 'accommodation') or alert_type is null),
+  notes            text,
+  notify_enabled   boolean not null default true,
+  created_at       timestamptz not null default now()
 );
+
+-- If you already ran this schema before, run this once to add the new columns:
+-- alter table students add column if not exists alert_type text check (alert_type in ('banned','vip','accommodation') or alert_type is null);
+-- alter table students add column if not exists notes text;
+-- alter table students add column if not exists notify_enabled boolean not null default true;
 
 -- 3. Entry logs table (one row per library visit)
 create table if not exists entry_logs (
