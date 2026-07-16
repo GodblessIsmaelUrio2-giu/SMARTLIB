@@ -285,6 +285,7 @@ app.post('/api/webauthn/register/options', async (req, res) => {
 
 // Step 1: server hands out a challenge + options for navigator.credentials.create()
 app.post('/api/webauthn/register/options', async (req, res) => {
+  console.log('register/options hit:', req.body?.reg_number);
   try {
     const { reg_number, name } = req.body;
     if (!reg_number || !name) {
