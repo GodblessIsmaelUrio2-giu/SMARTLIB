@@ -22,81 +22,133 @@
       </div>
     </div>
     <nav class="nav-pills">
-      <a href="checkin.html"><i class="ti ti-door-enter"></i> Check-in terminal</a>
-      <a href="checkout.html"><i class="ti ti-door-exit"></i> Check-out terminal</a>
-      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="checkin.html"><i class="ti ti-door-enter"></i> Check-in</a>
+      <a href="checkout.html"><i class="ti ti-door-exit"></i> Check-out</a>
+      <a href="#" id="signOutLink"><i class="ti ti-logout"></i> Sign out</a>
     </nav>
   </header>
 
   <main class="dash-main">
 
-    <div class="stat-grid">
-      <div class="stat-card glass">
-        <div class="stat-label">Active inside</div>
-        <div class="stat-value" id="statActiveInside">—</div>
-        <div class="stat-delta">Live count</div>
-      </div>
-      <div class="stat-card glass">
-        <div class="stat-label">Check-ins today</div>
-        <div class="stat-value" id="statCheckinsToday">—</div>
-        <div class="stat-delta">Since midnight</div>
-      </div>
-      <div class="stat-card glass">
-        <div class="stat-label">Avg entry time</div>
-        <div class="stat-value">2.1s</div>
-        <div class="stat-delta">80% faster than logbook</div>
-      </div>
-      <div class="stat-card glass">
-        <div class="stat-label">Flagged entries</div>
-        <div class="stat-value" id="statFlagged">—</div>
-        <div class="stat-delta flat">Needs review</div>
-      </div>
+    <!-- Section tabs -->
+    <div class="dash-tabs glass">
+      <button class="dash-tab active" data-tab="overview"><i class="ti ti-layout-dashboard"></i> Overview</button>
+      <button class="dash-tab" data-tab="override"><i class="ti ti-hand-stop"></i> Manual override</button>
+      <button class="dash-tab" data-tab="roster"><i class="ti ti-users"></i> Student roster</button>
+      <button class="dash-tab" data-tab="settings"><i class="ti ti-settings"></i> Settings</button>
     </div>
 
-    <div class="panel glass">
-      <div class="panel-header">
-        <h2><span class="live-dot"></span>Live entry log</h2>
-        <div class="actions">
-          <div class="search-box">
-            <i class="ti ti-search"></i>
-            <input type="text" placeholder="Search by name or reg number" id="searchInput">
+    <!-- ===== OVERVIEW ===== -->
+    <section class="dash-panel" id="tab-overview">
+      <div class="stat-grid">
+        <div class="stat-card glass">
+          <div class="stat-label">Active inside</div>
+          <div class="stat-value" id="statActiveInside">—</div>
+          <div class="stat-delta">Live count</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-label">Check-ins today</div>
+          <div class="stat-value" id="statCheckinsToday">—</div>
+          <div class="stat-delta">Since midnight</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-label">Avg entry time</div>
+          <div class="stat-value">2.1s</div>
+          <div class="stat-delta">80% faster than logbook</div>
+        </div>
+        <div class="stat-card glass">
+          <div class="stat-label">Flagged entries</div>
+          <div class="stat-value" id="statFlagged">—</div>
+          <div class="stat-delta flat">Needs review</div>
+        </div>
+      </div>
+
+      <div class="panel glass">
+        <div class="panel-header">
+          <h2><span class="live-dot"></span>Live entry log</h2>
+          <div class="actions">
+            <div class="search-box">
+              <i class="ti ti-search"></i>
+              <input type="text" placeholder="Search by name or reg number" id="searchInput">
+            </div>
+            <button class="btn" id="exportBtn"><i class="ti ti-download"></i> Export CSV</button>
+            <button class="btn btn-primary" id="refreshBtn"><i class="ti ti-refresh"></i> Refresh</button>
           </div>
-          <button class="btn"><i class="ti ti-download"></i> Export CSV</button>
-          <button class="btn btn-primary"><i class="ti ti-refresh"></i> Refresh</button>
         </div>
+        <table>
+          <thead>
+            <tr><th>Reg number</th><th>Name</th><th>Time in</th><th>Time out</th><th>Status</th></tr>
+          </thead>
+          <tbody id="logBody">
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Reg number</th>
-            <th>Name</th>
-            <th>Time in</th>
-            <th>Time out</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="logBody">
-          <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
+    </section>
 
-    <div class="panel glass">
-      <div class="panel-header">
-        <h2>Latest verification</h2>
-      </div>
-      <div style="padding:20px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-        <div class="avatar" style="width:64px;height:64px;font-size:20px;">SL</div>
-        <div>
-          <p style="margin:0; font-weight:600; font-size:16px;">Shafiuna Ahmadi Libiga</p>
-          <p class="mono" style="margin:4px 0 0; font-size:13px; color:var(--ink-soft);">DCS/32115/2401/DT</p>
-          <p style="margin:6px 0 0; font-size:13px;"><span class="pill pill-inside"><i class="ti ti-check"></i> Verified at 08:42 AM</span></p>
+    <!-- ===== MANUAL OVERRIDE ===== -->
+    <section class="dash-panel" id="tab-override" style="display:none;">
+      <div class="panel glass" style="padding:22px;">
+        <h2 style="font-size:15px; margin-bottom:4px;">Manual check-in / check-out</h2>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 18px;">Use this when a barcode or fingerprint scan fails at the terminal.</p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+          <div style="flex:1; min-width:220px;">
+            <label class="field-label">Registration number</label>
+            <input type="text" id="overrideReg" class="text-input mono" placeholder="e.g. DCS/32115/2401/DT">
+          </div>
+          <button class="btn btn-primary" id="overrideCheckinBtn"><i class="ti ti-door-enter"></i> Check in</button>
+          <button class="btn" id="overrideCheckoutBtn"><i class="ti ti-door-exit"></i> Check out</button>
         </div>
-        <div style="margin-left:auto; font-size:13px; color:var(--ink-soft); text-align:right;">
-          Confirm the face on screen matches<br>the student entering the library.
+        <div id="overrideStatus" class="status-box" style="display:none; margin-top:16px;"></div>
+      </div>
+
+      <div class="panel glass" style="padding:22px; margin-top:16px;">
+        <h2 style="font-size:15px; margin-bottom:4px;">Clear a flag</h2>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 18px;">Resolve a flagged entry once the baggage check is done.</p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+          <div style="flex:1; min-width:220px;">
+            <label class="field-label">Registration number</label>
+            <input type="text" id="clearFlagReg" class="text-input mono" placeholder="e.g. DCS/32115/2401/DT">
+          </div>
+          <button class="btn btn-primary" id="clearFlagBtn"><i class="ti ti-check"></i> Clear flag</button>
         </div>
       </div>
-    </div>
+    </section>
+
+    <!-- ===== ROSTER ===== -->
+    <section class="dash-panel" id="tab-roster" style="display:none;">
+      <div class="panel glass">
+        <div class="panel-header">
+          <h2><i class="ti ti-users" style="margin-right:8px;"></i>Student roster</h2>
+          <div class="actions">
+            <div class="search-box">
+              <i class="ti ti-search"></i>
+              <input type="text" placeholder="Search students" id="rosterSearch">
+            </div>
+            <button class="btn btn-primary" id="addStudentBtn"><i class="ti ti-user-plus"></i> Add student</button>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Reg number</th><th>Name</th><th>Fingerprint</th><th></th></tr>
+          </thead>
+          <tbody id="rosterBody">
+            <tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== SETTINGS ===== -->
+    <section class="dash-panel" id="tab-settings" style="display:none;">
+      <div class="panel glass" style="padding:22px;">
+        <h2 style="font-size:15px; margin-bottom:14px;">Dashboard access</h2>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 14px;">
+          Signed in as library staff. Sign out to lock this dashboard on a shared device.
+        </p>
+        <button class="btn" id="settingsSignOutBtn"><i class="ti ti-logout"></i> Sign out of dashboard</button>
+      </div>
+    </section>
 
   </main>
 
@@ -107,24 +159,61 @@
 
 </div>
 
+<style>
+.dash-tabs{display:flex;gap:6px;padding:8px;margin-bottom:16px;overflow-x:auto;}
+.dash-tab{
+  display:flex;align-items:center;gap:6px;
+  padding:10px 16px;border-radius:999px;border:none;
+  background:transparent;color:var(--ink-soft);
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:background .15s,color .15s;
+}
+.dash-tab:hover{background:rgba(255,255,255,0.5);}
+.dash-tab.active{background:var(--green-700);color:#fff;}
+.field-label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin:0 0 6px;}
+.text-input{width:100%;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);outline:none;}
+.text-input:focus{border-color:var(--green-500);}
+.status-box{padding:12px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;}
+.status-box.error{background:var(--red-bg);color:var(--red);}
+.status-box.success{background:rgba(74,154,74,0.18);color:var(--green-700);}
+</style>
+
 <script>
-// Point this at your Render backend — same domain used by index.html.
 const API_BASE = 'https://smartlib-f8ul.onrender.com';
 
-const searchInput = document.getElementById('searchInput');
+// ---- Guard: require a librarian session ----
+if(!sessionStorage.getItem('librarian_token')){
+  window.location.href = 'librarian-login.html';
+}
+
+// ---- Tabs ----
+document.querySelectorAll('.dash-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.dash-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.dash-panel').forEach(p => p.style.display = 'none');
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).style.display = '';
+  });
+});
+
+// ---- Sign out ----
+function signOut(){
+  sessionStorage.removeItem('librarian_token');
+  window.location.href = 'librarian-login.html';
+}
+document.getElementById('signOutLink').addEventListener('click', e => { e.preventDefault(); signOut(); });
+document.getElementById('settingsSignOutBtn').addEventListener('click', signOut);
+
+// ---- Overview: logs + stats (same as before) ----
 const logBody = document.getElementById('logBody');
-const refreshBtn = document.querySelector('.panel-header .btn-primary');
+const searchInput = document.getElementById('searchInput');
 
 function pillFor(row){
   if(row.status === 'inside') return '<span class="pill pill-inside"><i class="ti ti-door-enter"></i> Inside</span>';
   if(row.status === 'flagged') return '<span class="pill pill-flag"><i class="ti ti-alert-triangle"></i> ' + (row.flag_reason || 'Flagged') + '</span>';
   return '<span class="pill pill-out"><i class="ti ti-door-exit"></i> Checked out</span>';
 }
-
-function fmt(t){
-  if(!t) return '—';
-  return new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-}
+function fmt(t){ return t ? new Date(t).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—'; }
 
 async function loadLogs(){
   try {
@@ -143,11 +232,16 @@ async function loadLogs(){
         <td>${pillFor(r)}</td>
       </tr>
     `).join('');
-    attachSearch();
   } catch (err) {
     logBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--red);">Could not load logs</td></tr>';
   }
 }
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  document.querySelectorAll('#logBody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
 
 async function loadStats(){
   try {
@@ -156,28 +250,76 @@ async function loadStats(){
     document.getElementById('statActiveInside').textContent = stats.active_inside;
     document.getElementById('statCheckinsToday').textContent = stats.checkins_today;
     document.getElementById('statFlagged').textContent = stats.flagged;
-  } catch (err) {
-    // leave placeholders on failure
-  }
+  } catch (err) {}
 }
 
-function attachSearch(){
-  const rows = document.querySelectorAll('#logBody tr');
-  searchInput.addEventListener('input', () => {
-    const q = searchInput.value.trim().toLowerCase();
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      row.style.display = text.includes(q) ? '' : 'none';
+document.getElementById('refreshBtn').addEventListener('click', () => { loadLogs(); loadStats(); });
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  const res = await fetch(`${API_BASE}/api/logs`);
+  const rows = await res.json();
+  const csv = ['reg_number,name,time_in,time_out,status']
+    .concat(rows.map(r => `${r.reg_number},${r.name},${r.time_in || ''},${r.time_out || ''},${r.status}`))
+    .join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'entry_log.csv';
+  a.click();
+});
+
+// ---- Manual override ----
+const overrideStatus = document.getElementById('overrideStatus');
+function showOverrideStatus(msg, type){
+  overrideStatus.textContent = msg;
+  overrideStatus.className = 'status-box ' + type;
+  overrideStatus.style.display = 'block';
+}
+document.getElementById('overrideCheckinBtn').addEventListener('click', async () => {
+  const reg = document.getElementById('overrideReg').value.trim();
+  if(!reg) return showOverrideStatus('Enter a registration number.', 'error');
+  try {
+    const res = await fetch(`${API_BASE}/api/checkin`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ reg_number: reg })
     });
-  });
-}
+    const data = await res.json();
+    if(!res.ok || !data.granted) throw new Error(data.reason || data.error || 'Check-in failed');
+    showOverrideStatus(`Checked in ${data.student.name} at ${data.time_in}.`, 'success');
+    loadLogs(); loadStats();
+  } catch (err) { showOverrideStatus(err.message, 'error'); }
+});
+document.getElementById('overrideCheckoutBtn').addEventListener('click', async () => {
+  const reg = document.getElementById('overrideReg').value.trim();
+  if(!reg) return showOverrideStatus('Enter a registration number.', 'error');
+  try {
+    const res = await fetch(`${API_BASE}/api/checkout`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ reg_number: reg })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.checked_out) throw new Error(data.error || 'Check-out failed');
+    showOverrideStatus(`Checked out ${data.student.name} at ${data.time_out}.`, 'success');
+    loadLogs(); loadStats();
+  } catch (err) { showOverrideStatus(err.message, 'error'); }
+});
+// Note: /api/students/:reg_number/clear-flag is a new endpoint to add server-side if you want this button live.
+document.getElementById('clearFlagBtn').addEventListener('click', () => {
+  showOverrideStatus('Clear-flag endpoint not wired up yet — ask Claude to add it when ready.', 'error');
+});
 
-if(refreshBtn){
-  refreshBtn.addEventListener('click', () => { loadLogs(); loadStats(); });
+// ---- Roster ----
+// Note: /api/students (list) is a new endpoint to add server-side to power this tab.
+async function loadRoster(){
+  const rosterBody = document.getElementById('rosterBody');
+  rosterBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--ink-soft);">Roster endpoint not wired up yet.</td></tr>';
 }
+document.getElementById('addStudentBtn').addEventListener('click', () => {
+  alert('Add-student flow not wired up yet — ask Claude to add the endpoint + form when ready.');
+});
 
 loadLogs();
 loadStats();
+loadRoster();
 setInterval(() => { loadLogs(); loadStats(); }, 15000);
 </script>
 </body>

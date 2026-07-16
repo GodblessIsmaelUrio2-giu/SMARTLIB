@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KIUT SmartLib Pass — Librarian Login</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+</head>
+<body>
+<div class="page">
+
+  <header class="topbar glass">
+    <div class="brand">
+      <div class="brand-mark">
+        <img src="assets/logo.png" alt="KIUT logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <span class="fallback" style="display:none;">KIUT</span>
+      </div>
+      <div class="brand-text">
+        <h1>SmartLib Pass</h1>
+        <p>Librarian access</p>
+      </div>
+    </div>
+    <a href="index.html" class="back-link"><i class="ti ti-arrow-left"></i> Back to identity portal</a>
+  </header>
+
+  <main class="main">
+    <div class="kiosk glass" style="max-width:400px;">
+      <div class="kiosk-sheen"></div>
+
+      <div class="kiosk-header">
+        <span class="label"><i class="ti ti-shield-lock"></i> Staff sign-in</span>
+      </div>
+
+      <div style="padding:30px 26px 26px;">
+        <div class="idle-icon" style="margin:0 auto 20px;"><i class="ti ti-user-shield"></i></div>
+        <p style="text-align:center; font-size:14px; color:var(--ink-soft); margin:0 0 22px;">
+          Enter the librarian passcode to open the dashboard. No fingerprint needed on this device.
+        </p>
+
+        <label class="field-label" style="margin-top:0;">Passcode</label>
+        <input type="password" id="passcode" class="text-input" placeholder="••••••••" autocomplete="current-password">
+
+        <button class="btn btn-primary btn-block" id="loginBtn">
+          <i class="ti ti-login"></i> Sign in
+        </button>
+
+        <div id="statusBox" class="status-box" style="display:none;"></div>
+      </div>
+
+      <div class="kiosk-footer">
+        <span>Access is limited to library staff</span>
+      </div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <span>KIUT Library · Gongo la Mboto Campus</span>
+    <span>Staff portal</span>
+  </footer>
+
+</div>
+
+<style>
+.field-label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.05em;margin:0 0 6px;}
+.text-input{width:100%;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,0.7);background:rgba(255,255,255,0.6);font-family:'Inter',sans-serif;font-size:14px;color:var(--ink);outline:none;}
+.text-input:focus{border-color:var(--green-500);}
+.btn-block{width:100%;justify-content:center;margin-top:18px;padding:13px;font-size:14px;}
+.status-box{margin-top:14px;padding:12px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;}
+.status-box.error{background:var(--red-bg);color:var(--red);}
+.status-box.success{background:rgba(74,154,74,0.18);color:var(--green-700);}
+</style>
+
+<script>
+const API_BASE = 'https://smartlib-f8ul.onrender.com';
+
+const passcodeInput = document.getElementById('passcode');
+const loginBtn = document.getElementById('loginBtn');
+const statusBox = document.getElementById('statusBox');
+
+function showStatus(msg, type){
+  statusBox.textContent = msg;
+  statusBox.className = 'status-box ' + type;
+  statusBox.style.display = 'block';
+}
+
+async function attemptLogin(){
+  const passcode = passcodeInput.value.trim();
+  if(!passcode){
+    showStatus('Enter the passcode.', 'error');
+    return;
+  }
+  loginBtn.disabled = true;
+  loginBtn.innerHTML = '<i class="ti ti-loader"></i> Checking…';
+
+  try {
+    const res = await fetch(`${API_BASE}/api/librarian/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode })
+    });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Incorrect passcode');
+
+    sessionStorage.setItem('librarian_token', data.token);
+    showStatus('Signed in. Opening dashboard…', 'success');
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 500);
+  } catch (err) {
+    showStatus(err.message || 'Sign-in failed', 'error');
+    loginBtn.disabled = false;
+    loginBtn.innerHTML = '<i class="ti ti-login"></i> Sign in';
+  }
+}
+
+loginBtn.addEventListener('click', attemptLogin);
+passcodeInput.addEventListener('keydown', e => { if(e.key === 'Enter') attemptLogin(); });
+</script>
+</body>
+</html>
