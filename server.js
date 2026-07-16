@@ -274,12 +274,7 @@ app.post('/api/librarian/login', (req, res) => {
   res.json({ ok: true, token });
 });
 
-// ---------- WebAuthn: fingerprint registration ----------
 
-// Step 1: server hands out a challenge + options for navigator.credentials.create()
-app.post('/api/webauthn/register/options', async (req, res) => {
-  // ... route body ...
-});
 
 // ---------- WebAuthn: fingerprint registration ----------
 
